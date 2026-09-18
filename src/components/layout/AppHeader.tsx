@@ -9,16 +9,19 @@ import {
   AlertCircle,
   X,
   UserCheck,
-  Plus
+  Plus,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DeviceSkin, User } from '../../types';
 
 interface AppHeaderProps {
   onOpenNewEvent: () => void;
+  onOpenLogin: () => void;
 }
 
-export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent }) => {
+export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent, onOpenLogin }) => {
   const {
     currentEvent,
     events,
@@ -26,6 +29,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent }) => {
     currentUser,
     users,
     setCurrentUser,
+    isLoggedIn,
+    login,
+    logout,
     notifications,
     unreadNotificationCount,
     markNotificationAsRead,
@@ -214,6 +220,21 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent }) => {
             )}
           </div>
 
+          {/* Login Button */}
+          <button
+            type="button"
+            onClick={onOpenLogin}
+            className={`flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-bold transition shadow-xs active:scale-95 ${
+              isLoggedIn
+                ? 'bg-emerald-800 text-white hover:bg-emerald-700'
+                : 'bg-emerald-700 text-white hover:bg-emerald-600 ring-2 ring-emerald-400/40'
+            }`}
+            title={isLoggedIn ? '계정 전환 및 로그인' : '현장 업무 로그인'}
+          >
+            <LogIn className="h-3.5 w-3.5" />
+            <span>{isLoggedIn ? '로그인/전환' : '로그인'}</span>
+          </button>
+
           {/* User Switcher (For collaborative testing of PRD team roles) */}
           <div className="relative">
             <button
@@ -222,11 +243,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent }) => {
               className="flex items-center gap-1.5 rounded-xl bg-slate-100 p-1 pl-2 text-xs font-bold text-slate-700 hover:bg-slate-200 transition"
               title="사용자 전환 (협업 시뮬레이션)"
             >
-              <span className="hidden sm:inline">{currentUser.name}</span>
+              <span className="hidden sm:inline">
+                {isLoggedIn ? currentUser.name : '게스트'}
+              </span>
               <div
-                className={`flex h-7 w-7 items-center justify-center rounded-lg text-white font-bold text-xs ${currentUser.avatarColor}`}
+                className={`flex h-7 w-7 items-center justify-center rounded-lg text-white font-bold text-xs ${
+                  isLoggedIn ? currentUser.avatarColor : 'bg-slate-400'
+                }`}
               >
-                {currentUser.name[0]}
+                {isLoggedIn ? currentUser.name[0] : '?'}
               </div>
             </button>
 
@@ -237,13 +262,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent }) => {
                   className="fixed inset-0 z-40"
                   onClick={() => setIsUserMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl bg-white p-2.5 shadow-xl border border-slate-200">
-                  <div className="px-2 py-1 mb-1 border-b border-slate-100">
+                <div className="absolute right-0 top-12 z-50 w-60 rounded-2xl bg-white p-2.5 shadow-xl border border-slate-200">
+                  <div className="px-2 py-1.5 mb-1 border-b border-slate-100">
                     <span className="text-[11px] font-bold text-slate-400 block">
-                      팀원 계정 전환 (동시 체크 테스트)
+                      팀원 계정 전환 (현장 동시 체크)
                     </span>
                     <span className="text-xs font-semibold text-slate-800">
-                      현재 접속: {currentUser.name} ({currentUser.department})
+                      {isLoggedIn
+                        ? `현재 접속: ${currentUser.name} (${currentUser.department})`
+                        : '현재 상태: 미로그인 (게스트)'}
                     </span>
                   </div>
                   <div className="space-y-1">
@@ -252,11 +279,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent }) => {
                         key={u.id}
                         type="button"
                         onClick={() => {
-                          setCurrentUser(u);
+                          login(u);
                           setIsUserMenuOpen(false);
                         }}
                         className={`w-full flex items-center justify-between rounded-xl px-2 py-1.5 text-left text-xs transition ${
-                          u.id === currentUser.id
+                          isLoggedIn && u.id === currentUser.id
                             ? 'bg-emerald-50 text-emerald-800 font-bold'
                             : 'text-slate-700 hover:bg-slate-50'
                         }`}
@@ -272,11 +299,38 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent }) => {
                             <span className="text-[10px] text-slate-400">{u.department}</span>
                           </div>
                         </div>
-                        {u.id === currentUser.id && (
+                        {isLoggedIn && u.id === currentUser.id && (
                           <UserCheck className="h-4 w-4 text-emerald-700" />
                         )}
                       </button>
                     ))}
+                  </div>
+
+                  <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onOpenLogin();
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 py-1.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition"
+                    >
+                      <LogIn className="h-3.5 w-3.5" />
+                      <span>로그인 화면 열기</span>
+                    </button>
+                    {isLoggedIn && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          logout();
+                          setIsUserMenuOpen(false);
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 py-1.5 transition"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        <span>로그아웃</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </>

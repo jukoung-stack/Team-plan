@@ -15,6 +15,8 @@ import {
   TeamInviteModal,
 } from './components/events/EventModals';
 import { AiReportAssistantModal } from './components/ai/AiReportAssistantModal';
+import { LoginModal } from './components/auth/LoginModal';
+import { AppFooter } from './components/layout/AppFooter';
 import { Task, EventItem } from './types';
 import { Camera, Plus, Zap, Wifi, Battery, Signal } from 'lucide-react';
 
@@ -40,6 +42,7 @@ const MainApp: React.FC = () => {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isAiReportOpen, setIsAiReportOpen] = useState(false);
   const [aiReportTargetEvent, setAiReportTargetEvent] = useState<EventItem | null>(null);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
 
   const handleOpenTask = (task: Task) => {
     setSelectedTask(task);
@@ -112,6 +115,7 @@ const MainApp: React.FC = () => {
           <MoreView
             onOpenTeamInvite={() => handleOpenInvite()}
             onOpenNewEvent={() => setIsNewEventOpen(true)}
+            onOpenLogin={() => setIsLoginOpen(true)}
           />
         );
       default:
@@ -173,11 +177,20 @@ const MainApp: React.FC = () => {
         )}
 
         {/* Global App Header */}
-        <AppHeader onOpenNewEvent={() => setIsNewEventOpen(true)} />
+        <AppHeader
+          onOpenNewEvent={() => setIsNewEventOpen(true)}
+          onOpenLogin={() => setIsLoginOpen(true)}
+        />
 
         {/* Scrollable View Content */}
         <main className="flex-1 overflow-y-auto px-3 sm:px-4">
           {renderView()}
+          {/* App Footer */}
+          <AppFooter
+            onOpenInvite={() => handleOpenInvite()}
+            onOpenLogin={() => setIsLoginOpen(true)}
+            onOpenNewEvent={() => setIsNewEventOpen(true)}
+          />
         </main>
 
         {/* Floating Fast Action Button (PRD 27: 1분 현장 빠른 완료) */}
@@ -255,6 +268,11 @@ const MainApp: React.FC = () => {
         inviteCode={inviteCodeToShare}
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
+      />
+
+      <LoginModal
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
       />
     </div>
   );

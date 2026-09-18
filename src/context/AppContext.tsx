@@ -45,6 +45,9 @@ interface AppContextType {
   setActiveTab: (tab: ActiveTab) => void;
   deviceSkin: DeviceSkin;
   setDeviceSkin: (skin: DeviceSkin) => void;
+  isLoggedIn: boolean;
+  login: (user: User) => void;
+  logout: () => void;
   
   // Actions
   toggleTaskCompletion: (taskId: string, memberId?: string) => void;
@@ -89,6 +92,7 @@ const STORAGE_KEYS = {
   COMMENTS: 'eventcheck_comments',
   NOTIFICATIONS: 'eventcheck_notifications',
   DEVICE_SKIN: 'eventcheck_device_skin',
+  IS_LOGGED_IN: 'eventcheck_is_logged_in',
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -106,6 +110,10 @@ function getInitialStorage<T>(key: string, fallback: T): T {
 }
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() =>
+    getInitialStorage(STORAGE_KEYS.IS_LOGGED_IN, true)
+  );
+
   const [users, setUsers] = useState<User[]>(() =>
     getInitialStorage(STORAGE_KEYS.USERS, INITIAL_USERS)
   );
@@ -686,9 +694,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
+  const login = (user: User) => {
+    setCurrentUserId(user.id);
+    setIsLoggedIn(true);
+    localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, JSON.stringify(true));
+    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, JSON.stringify(user.id));
+  };
+
+  const logout = () => {
+    setIsLoggedIn(false);
+    localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, JSON.stringify(false));
+  };
+
   const resetToSampleData = () => {
     setUsers(INITIAL_USERS);
     setCurrentUserId('u-1');
+    setIsLoggedIn(true);
     setEvents(INITIAL_EVENTS);
     setCurrentEventId('evt-1');
     setTasks(INITIAL_TASKS);
@@ -705,6 +726,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         users,
         currentUser,
         setCurrentUser: (u: User) => setCurrentUserId(u.id),
+        isLoggedIn,
+        login,
+        logout,
         events,
         currentEventId,
         setCurrentEventId,
