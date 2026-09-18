@@ -4,145 +4,175 @@ import {
   LogIn,
   LogOut,
   UserCheck,
-  Shield,
   Smartphone,
-  Mail,
-  KeyRound,
   CheckCircle2,
   AlertCircle,
-  Building2,
   Users,
-  Sparkles,
-  ArrowRight,
-  Check
+  Shield,
+  UserPlus,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { User } from '../../types';
+import { User, UserRole } from '../../types';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-/* Authentic Social Brand SVGs */
-const KakaoIcon: React.FC<{ className?: string }> = ({ className = 'h-5 w-5' }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M12 3C6.477 3 2 6.477 2 10.765c0 2.758 1.838 5.176 4.632 6.556l-1.18 4.354a.6.6 0 0 0 .864.674l5.176-3.418c.168.012.338.018.508.018 5.523 0 10-3.477 10-7.765C22 6.477 17.523 3 12 3z" />
-  </svg>
-);
-
-const NaverIcon: React.FC<{ className?: string }> = ({ className = 'h-4 w-4' }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z" />
-  </svg>
-);
-
-const GoogleIcon: React.FC<{ className?: string }> = ({ className = 'h-5 w-5' }) => (
-  <svg viewBox="0 0 24 24" className={className}>
-    <path
-      fill="#4285F4"
-      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-    />
-    <path
-      fill="#34A853"
-      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.26 21.36 7.36 24 12 24z"
-    />
-    <path
-      fill="#FBBC05"
-      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z"
-    />
-    <path
-      fill="#EA4335"
-      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-    />
-  </svg>
-);
-
-type SocialProvider = 'kakao' | 'naver' | 'google';
-
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const {
     currentUser,
     users,
-    setCurrentUser,
     isLoggedIn,
     login,
     logout,
+    addTeamMember,
+    deleteTeamMember,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'social' | 'quick' | 'form'>('social');
-  const [socialLayoutMode, setSocialLayoutMode] = useState<'list' | 'grid'>('list');
-  const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
-  const [accountInput, setAccountInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
-  const [formSuccessMessage, setFormSuccessMessage] = useState<string | null>(null);
+  // Unified login form state
+  const [nameInput, setNameInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Admin registration form state
+  const [showAdminAddForm, setShowAdminAddForm] = useState(false);
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberDept, setNewMemberDept] = useState('현장운영팀');
+  const [newMemberPhone, setNewMemberPhone] = useState('010-');
+  const [newMemberRole, setNewMemberRole] = useState<UserRole>('member');
+  const [adminFeedback, setAdminFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSocialLogin = (provider: SocialProvider) => {
-    setSocialLoading(provider);
-
-    // Simulated authentic OAuth token acquisition & user profile creation/mapping
-    setTimeout(() => {
-      let targetUser: User;
-      const providerLabel = provider === 'kakao' ? '카카오' : provider === 'naver' ? '네이버' : 'Google';
-
-      // Find existing or pick representative user with updated social login state
-      if (provider === 'kakao') {
-        targetUser = users.find((u) => u.name.includes('이영희')) || users[1] || users[0];
-      } else if (provider === 'naver') {
-        targetUser = users.find((u) => u.name.includes('박민수')) || users[2] || users[0];
-      } else {
-        targetUser = users.find((u) => u.name.includes('김철수')) || users[0];
-      }
-
-      login(targetUser);
-      setSocialLoading(null);
-      setFormSuccessMessage(`${providerLabel} 계정으로 안전하게 연동 및 로그인되었습니다.`);
-
-      setTimeout(() => {
-        setFormSuccessMessage(null);
-        onClose();
-      }, 900);
-    }, 650);
+  // Format phone number as user types
+  const handlePhoneChange = (val: string) => {
+    const raw = val.replace(/[^0-9]/g, '');
+    if (raw.length <= 3) {
+      setPhoneInput(raw);
+    } else if (raw.length <= 7) {
+      setPhoneInput(`${raw.slice(0, 3)}-${raw.slice(3)}`);
+    } else {
+      setPhoneInput(`${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7, 11)}`);
+    }
   };
 
-  const handleQuickSelect = (user: User) => {
-    login(user);
-    setFormSuccessMessage(`${user.name} (${user.department}) 계정으로 로그인되었습니다.`);
-    setTimeout(() => {
-      setFormSuccessMessage(null);
-      onClose();
-    }, 800);
+  const handleAdminPhoneChange = (val: string) => {
+    const raw = val.replace(/[^0-9]/g, '');
+    if (raw.length <= 3) {
+      setNewMemberPhone(raw);
+    } else if (raw.length <= 7) {
+      setNewMemberPhone(`${raw.slice(0, 3)}-${raw.slice(3)}`);
+    } else {
+      setNewMemberPhone(`${raw.slice(0, 3)}-${raw.slice(3, 7)}-${raw.slice(7, 11)}`);
+    }
   };
 
-  const handleFormLogin = (e: React.FormEvent) => {
+  // 1. Unified login submission with strict name matching & phone verification
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!accountInput.trim()) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
-    // Check if matching phone or name
-    const foundUser =
-      users.find(
-        (u) =>
-          u.phone.replace(/[^0-9]/g, '') === accountInput.replace(/[^0-9]/g, '') ||
-          u.name.toLowerCase() === accountInput.trim().toLowerCase()
-      ) || users[0];
+    const trimmedName = nameInput.trim();
+    const cleanInputPhone = phoneInput.replace(/[^0-9]/g, '');
 
-    login(foundUser);
-    setFormSuccessMessage(`${foundUser.name}님 환영합니다! 현장 업무를 시작합니다.`);
+    if (!trimmedName) {
+      setErrorMessage('팀원명(한글 이름)을 입력해주세요.');
+      return;
+    }
+
+    if (!cleanInputPhone) {
+      setErrorMessage('휴대폰 번호를 입력해주세요.');
+      return;
+    }
+
+    // Match entered name with registered team members (Korean names)
+    const matchedUser = users.find(
+      (u) => u.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    // If team member name is not identical, DENY ACCESS
+    if (!matchedUser) {
+      setErrorMessage(
+        `접속 불허: 등록된 팀원명 중 '${trimmedName}'을(를) 찾을 수 없습니다. 팀원명과 정확히 동일해야 접속이 허가됩니다. 총괄관리자에게 팀원 등록(한글 이름)을 먼저 요청하세요.`
+      );
+      return;
+    }
+
+    // Verify phone number
+    const userPhoneDigits = matchedUser.phone.replace(/[^0-9]/g, '');
+    if (cleanInputPhone !== userPhoneDigits) {
+      setErrorMessage(
+        `휴대폰 번호 불일치: '${matchedUser.name}' 팀원으로 등록된 휴대폰 번호와 일치하지 않습니다.`
+      );
+      return;
+    }
+
+    // Both name and phone match -> GRANT ACCESS
+    login(matchedUser);
+    setSuccessMessage(
+      `접속 허가 완료: [${matchedUser.name}] 팀원 확인 완료! 시스템에 접속합니다.`
+    );
+
     setTimeout(() => {
-      setFormSuccessMessage(null);
+      setSuccessMessage(null);
       onClose();
     }, 900);
   };
 
-  const handleLogout = () => {
+  // Quick select helper
+  const handleSelectQuickUser = (u: User) => {
+    setNameInput(u.name);
+    setPhoneInput(u.phone);
+    setErrorMessage(null);
+  };
+
+  const handleLogoutClick = () => {
     logout();
-    setFormSuccessMessage('정상적으로 로그아웃되었습니다.');
+    setSuccessMessage('정상적으로 로그아웃되었습니다.');
     setTimeout(() => {
-      setFormSuccessMessage(null);
+      setSuccessMessage(null);
     }, 1200);
+  };
+
+  // 2. Admin direct registration handler
+  const handleAddMemberSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminFeedback(null);
+
+    const res = addTeamMember({
+      name: newMemberName,
+      department: newMemberDept,
+      phone: newMemberPhone,
+      role: newMemberRole,
+    });
+
+    if (!res.success) {
+      setAdminFeedback({ type: 'error', text: res.message });
+      return;
+    }
+
+    setAdminFeedback({
+      type: 'success',
+      text: res.message,
+    });
+
+    // Autofill into login form for instant convenience
+    if (res.user) {
+      setNameInput(res.user.name);
+      setPhoneInput(res.user.phone);
+    }
+
+    setNewMemberName('');
+    setNewMemberPhone('010-');
+    setTimeout(() => {
+      setAdminFeedback(null);
+    }, 3000);
   };
 
   return (
@@ -155,9 +185,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               <LogIn className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-black">행사 체크 로그인 & 인증</h2>
+              <h2 className="text-base font-black">현장 업무 로그인</h2>
               <p className="text-xs text-emerald-200/80 break-keep">
-                SNS 간편 로그인 및 현장 팀원 즉시 연결
+                등록된 팀원(한글 이름)과 휴대폰 번호 단일 접속
               </p>
             </div>
           </div>
@@ -183,16 +213,22 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-slate-900">
-                  {isLoggedIn ? currentUser.name : '게스트 (미로그인 상태)'}
+                  {isLoggedIn ? currentUser.name : '미접속 상태'}
                 </span>
                 {isLoggedIn && (
                   <span className="rounded bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-800">
-                    {currentUser.role === 'admin' ? '관리자' : currentUser.role === 'leader' ? '팀장' : '팀원'}
+                    {currentUser.role === 'admin'
+                      ? '총괄관리자'
+                      : currentUser.role === 'leader'
+                      ? '팀장'
+                      : '팀원'}
                   </span>
                 )}
               </div>
               <span className="text-[11px] text-slate-500 block break-keep">
-                {isLoggedIn ? `${currentUser.department} · ${currentUser.phone}` : '로그인하여 업무를 배정받으세요.'}
+                {isLoggedIn
+                  ? `${currentUser.department} · ${currentUser.phone}`
+                  : '팀원명과 휴대폰으로 로그인하세요.'}
               </span>
             </div>
           </div>
@@ -200,472 +236,271 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           {isLoggedIn ? (
             <button
               type="button"
-              onClick={handleLogout}
-              className="flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition active:scale-95"
+              onClick={handleLogoutClick}
+              className="flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-[11px] font-bold text-rose-600 hover:bg-rose-50 transition active:scale-95 shadow-2xs"
             >
               <LogOut className="h-3 w-3" />
               <span>로그아웃</span>
             </button>
           ) : (
-            <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-600">
-              미인증
+            <span className="rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+              로그인 필요
             </span>
           )}
         </div>
 
-        {/* Success Feedback Alert */}
-        {formSuccessMessage && (
-          <div className="mx-4 mt-3 flex items-center gap-2 rounded-xl bg-emerald-100/80 px-3 py-2 text-xs font-bold text-emerald-900 border border-emerald-300 animate-in fade-in">
-            <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
-            <span className="break-keep">{formSuccessMessage}</span>
-          </div>
-        )}
-
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-200 px-3 pt-2.5 bg-slate-50/50">
-          <button
-            type="button"
-            onClick={() => setActiveTab('social')}
-            className={`flex-1 pb-2 text-xs font-bold border-b-2 transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'social'
-                ? 'border-emerald-700 text-emerald-800'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>SNS 소셜 로그인</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('quick')}
-            className={`flex-1 pb-2 text-xs font-bold border-b-2 transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'quick'
-                ? 'border-emerald-700 text-emerald-800'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <Users className="h-3.5 w-3.5" />
-            <span>현장 팀원 선택</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('form')}
-            className={`flex-1 pb-2 text-xs font-bold border-b-2 transition flex items-center justify-center gap-1.5 ${
-              activeTab === 'form'
-                ? 'border-emerald-700 text-emerald-800'
-                : 'border-transparent text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <KeyRound className="h-3.5 w-3.5" />
-            <span>사번 / 휴대폰</span>
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-          {/* TAB 1: SNS Social Login */}
-          {activeTab === 'social' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-black text-slate-900">
-                    간편 소셜 로그인
-                  </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5 break-keep">
-                    자주 사용하는 소셜 계정으로 3초 만에 현장 시스템에 접속하세요.
-                  </p>
-                </div>
-                {/* Layout switch: List vs Grid */}
-                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold text-slate-600">
-                  <button
-                    type="button"
-                    onClick={() => setSocialLayoutMode('list')}
-                    className={`px-2 py-0.5 rounded-md transition ${
-                      socialLayoutMode === 'list'
-                        ? 'bg-white shadow-2xs text-slate-900'
-                        : 'hover:text-slate-900'
-                    }`}
-                  >
-                    목록형
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSocialLayoutMode('grid')}
-                    className={`px-2 py-0.5 rounded-md transition ${
-                      socialLayoutMode === 'grid'
-                        ? 'bg-white shadow-2xs text-slate-900'
-                        : 'hover:text-slate-900'
-                    }`}
-                  >
-                    3열 바둑판형
-                  </button>
-                </div>
-              </div>
-
-              {/* Layout Mode: List (Full Width Standard Buttons) */}
-              {socialLayoutMode === 'list' ? (
-                <div className="space-y-2.5">
-                  {/* Kakao Button */}
-                  <button
-                    type="button"
-                    disabled={socialLoading !== null}
-                    onClick={() => handleSocialLogin('kakao')}
-                    className="w-full flex items-center justify-between rounded-xl px-4 py-3 text-xs font-bold transition shadow-xs active:scale-98 disabled:opacity-60 bg-[#FEE500] text-[#191919] hover:bg-[#FDD800] border border-[#F4DC00]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-6 w-6 items-center justify-center">
-                        <KakaoIcon className="h-5 w-5 text-[#191919]" />
-                      </div>
-                      <span className="text-[13px] font-black tracking-tight">
-                        카카오로 시작하기
-                      </span>
-                    </div>
-                    {socialLoading === 'kakao' ? (
-                      <div className="h-4 w-4 border-2 border-black/60 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span className="text-[11px] font-medium text-black/60">
-                        빠른 로그인
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Naver Button */}
-                  <button
-                    type="button"
-                    disabled={socialLoading !== null}
-                    onClick={() => handleSocialLogin('naver')}
-                    className="w-full flex items-center justify-between rounded-xl px-4 py-3 text-xs font-bold transition shadow-xs active:scale-98 disabled:opacity-60 bg-[#03C75A] text-white hover:bg-[#02b350] border border-[#02b350]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-6 w-6 items-center justify-center">
-                        <NaverIcon className="h-4 w-4 text-white" />
-                      </div>
-                      <span className="text-[13px] font-black tracking-tight">
-                        네이버로 시작하기
-                      </span>
-                    </div>
-                    {socialLoading === 'naver' ? (
-                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span className="text-[11px] font-medium text-white/80">
-                        간편 인증
-                      </span>
-                    )}
-                  </button>
-
-                  {/* Google Button */}
-                  <button
-                    type="button"
-                    disabled={socialLoading !== null}
-                    onClick={() => handleSocialLogin('google')}
-                    className="w-full flex items-center justify-between rounded-xl px-4 py-3 text-xs font-bold transition shadow-xs active:scale-98 disabled:opacity-60 bg-white text-slate-700 hover:bg-slate-50 border border-slate-300"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-6 w-6 items-center justify-center">
-                        <GoogleIcon className="h-5 w-5" />
-                      </div>
-                      <span className="text-[13px] font-black text-slate-800 tracking-tight">
-                        Google로 시작하기
-                      </span>
-                    </div>
-                    {socialLoading === 'google' ? (
-                      <div className="h-4 w-4 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <span className="text-[11px] font-medium text-slate-400">
-                        표준 연동
-                      </span>
-                    )}
-                  </button>
-                </div>
-              ) : (
-                /* Layout Mode: Grid (3 Column Compact Cards) */
-                <div className="grid grid-cols-3 gap-2.5">
-                  {/* Kakao Compact */}
-                  <button
-                    type="button"
-                    disabled={socialLoading !== null}
-                    onClick={() => handleSocialLogin('kakao')}
-                    className="flex flex-col items-center justify-center rounded-xl p-3 bg-[#FEE500] hover:bg-[#FDD800] border border-[#F4DC00] text-[#191919] transition active:scale-95 shadow-2xs text-center"
-                  >
-                    <div className="h-8 w-8 flex items-center justify-center mb-1">
-                      {socialLoading === 'kakao' ? (
-                        <div className="h-5 w-5 border-2 border-black/60 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <KakaoIcon className="h-6 w-6" />
-                      )}
-                    </div>
-                    <span className="text-xs font-black">카카오</span>
-                    <span className="text-[10px] text-black/60 mt-0.5">간편 로그인</span>
-                  </button>
-
-                  {/* Naver Compact */}
-                  <button
-                    type="button"
-                    disabled={socialLoading !== null}
-                    onClick={() => handleSocialLogin('naver')}
-                    className="flex flex-col items-center justify-center rounded-xl p-3 bg-[#03C75A] hover:bg-[#02b350] border border-[#02b350] text-white transition active:scale-95 shadow-2xs text-center"
-                  >
-                    <div className="h-8 w-8 flex items-center justify-center mb-1">
-                      {socialLoading === 'naver' ? (
-                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <NaverIcon className="h-5 w-5" />
-                      )}
-                    </div>
-                    <span className="text-xs font-black">네이버</span>
-                    <span className="text-[10px] text-white/80 mt-0.5">간편 로그인</span>
-                  </button>
-
-                  {/* Google Compact */}
-                  <button
-                    type="button"
-                    disabled={socialLoading !== null}
-                    onClick={() => handleSocialLogin('google')}
-                    className="flex flex-col items-center justify-center rounded-xl p-3 bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 transition active:scale-95 shadow-2xs text-center"
-                  >
-                    <div className="h-8 w-8 flex items-center justify-center mb-1">
-                      {socialLoading === 'google' ? (
-                        <div className="h-5 w-5 border-2 border-slate-700 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <GoogleIcon className="h-6 w-6" />
-                      )}
-                    </div>
-                    <span className="text-xs font-black">Google</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">간편 로그인</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Divider & Secondary Quick Links */}
-              <div className="relative py-1">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-2.5 text-[11px] font-semibold text-slate-400">
-                    또는 현장 시스템 연동
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('quick')}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 p-2.5 text-xs font-bold text-slate-700 transition"
-                >
-                  <Users className="h-3.5 w-3.5 text-emerald-700" />
-                  <span>팀원 즉시 전환</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('form')}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 p-2.5 text-xs font-bold text-slate-700 transition"
-                >
-                  <Smartphone className="h-3.5 w-3.5 text-slate-600" />
-                  <span>사번/연락처 입력</span>
-                </button>
-              </div>
-
-              {/* Security Banner */}
-              <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/80 text-[11px] text-slate-500 leading-relaxed break-keep">
-                <div className="flex items-center gap-1.5 font-bold text-slate-700 mb-1">
-                  <Shield className="h-3.5 w-3.5 text-emerald-700" />
-                  <span>안전한 소셜 인증 안내</span>
-                </div>
-                소셜 로그인 시 행사 현장 체크리스트의 담당자 지정, 서명 및 실시간 협업 권한이 개인 SNS 계정과 안전하게 연동됩니다.
-              </div>
+        {/* Scrollable Body */}
+        <div className="overflow-y-auto p-5 space-y-4">
+          {/* Success Banner */}
+          {successMessage && (
+            <div className="flex items-center gap-2 rounded-xl bg-emerald-100 px-3.5 py-2.5 text-xs font-bold text-emerald-900 border border-emerald-300 animate-in fade-in">
+              <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+              <span className="break-keep">{successMessage}</span>
             </div>
           )}
 
-          {/* TAB 2: Quick Team Switch */}
-          {activeTab === 'quick' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">
-                  등록된 행사 팀원 목록 (원클릭 전환)
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  총 {users.length}명
-                </span>
-              </div>
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="flex items-start gap-2 rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-bold text-rose-800 border border-rose-200 animate-in fade-in">
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+              <span className="break-keep">{errorMessage}</span>
+            </div>
+          )}
 
-              <div className="space-y-2">
-                {users.map((user) => {
-                  const isCurrent = isLoggedIn && user.id === currentUser.id;
-                  return (
-                    <div
-                      key={user.id}
-                      onClick={() => handleQuickSelect(user)}
-                      className={`cursor-pointer rounded-xl border p-3 flex items-center justify-between transition ${
-                        isCurrent
-                          ? 'border-emerald-600 bg-emerald-50/70 shadow-xs'
-                          : 'border-slate-200 bg-slate-50 hover:bg-slate-100/80 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-xl text-white font-bold text-sm shadow-xs ${user.avatarColor}`}
-                        >
-                          {user.name[0]}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-sm text-slate-900">
-                              {user.name}
-                            </span>
-                            <span className="rounded bg-slate-200/80 px-1.5 py-0.2 text-[10px] font-bold text-slate-700">
-                              {user.role === 'admin' ? '총괄 관리자' : user.role === 'leader' ? '팀장' : '현장 팀원'}
-                            </span>
-                          </div>
-                          <span className="text-xs text-slate-500 block mt-0.5 break-keep">
-                            {user.department} · {user.phone}
+          {/* Unified Login Form */}
+          <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+            <div>
+              <label className="text-xs font-bold text-slate-700 flex items-center justify-between mb-1">
+                <span className="flex items-center gap-1">
+                  <UserCheck className="h-3.5 w-3.5 text-emerald-700" />
+                  <span>팀원명 (한글 이름)</span>
+                </span>
+                <span className="text-[10px] text-emerald-700 font-semibold">
+                  *등록 팀원명과 일치 시 접속허가
+                </span>
+              </label>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder="예: 김철수, 총괄관리자 (한글)"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-hidden font-medium placeholder:text-slate-400"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 flex items-center gap-1 mb-1">
+                <Smartphone className="h-3.5 w-3.5 text-emerald-700" />
+                <span>휴대폰 번호</span>
+              </label>
+              <input
+                type="text"
+                value={phoneInput}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                placeholder="예: 010-1234-5678"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-hidden font-medium placeholder:text-slate-400"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3 text-xs font-bold text-white shadow-md hover:bg-emerald-600 transition active:scale-98"
+            >
+              <LogIn className="h-4 w-4" />
+              <span>접속 확인 및 로그인</span>
+            </button>
+          </form>
+
+          {/* Quick Select of Registered Team Members */}
+          <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/80 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+              <span className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5 text-slate-400" />
+                <span>등록된 팀원 명단 (클릭 시 자동 입력)</span>
+              </span>
+              <span className="text-[10px] text-slate-400">총 {users.length}명</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {users.map((u) => {
+                const isSelected =
+                  nameInput.trim() === u.name.trim() &&
+                  phoneInput.replace(/[^0-9]/g, '') === u.phone.replace(/[^0-9]/g, '');
+
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => handleSelectQuickUser(u)}
+                    className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs transition border ${
+                      isSelected
+                        ? 'border-emerald-600 bg-emerald-100/80 text-emerald-900 font-bold shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className={`h-2 w-2 rounded-full ${u.avatarColor}`} />
+                    <span>{u.name}</span>
+                    <span className="text-[10px] text-slate-400">
+                      {u.role === 'admin' ? '(총괄)' : u.role === 'leader' ? '(팀장)' : ''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Admin Team Member Direct Registration Card */}
+          <div className="rounded-xl border border-emerald-900/15 bg-emerald-50/50 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowAdminAddForm(!showAdminAddForm)}
+              className="w-full flex items-center justify-between p-3 text-xs font-bold text-emerald-900 hover:bg-emerald-100/50 transition"
+            >
+              <div className="flex items-center gap-1.5">
+                <Shield className="h-4 w-4 text-emerald-700" />
+                <span>총괄관리자: 신규 팀원 직접 등록 (한글 이름)</span>
+              </div>
+              {showAdminAddForm ? (
+                <ChevronUp className="h-4 w-4 text-emerald-700" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-emerald-700" />
+              )}
+            </button>
+
+            {showAdminAddForm && (
+              <div className="p-3.5 pt-1 border-t border-emerald-200/60 bg-white space-y-3">
+                <p className="text-[11px] text-slate-600 break-keep">
+                  총괄관리자가 팀원명(한글 2~10자)을 직접 등록하면, 해당 팀원은 자신의 한글 이름과 휴대폰 번호로 즉시 로그인 접속이 허가됩니다.
+                </p>
+
+                {adminFeedback && (
+                  <div
+                    className={`rounded-lg p-2.5 text-xs font-bold ${
+                      adminFeedback.type === 'success'
+                        ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                        : 'bg-rose-50 text-rose-800 border border-rose-200'
+                    }`}
+                  >
+                    {adminFeedback.text}
+                  </div>
+                )}
+
+                <form onSubmit={handleAddMemberSubmit} className="space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        팀원명 (한글 필수)
+                      </label>
+                      <input
+                        type="text"
+                        value={newMemberName}
+                        onChange={(e) => setNewMemberName(e.target.value)}
+                        placeholder="예: 홍길동"
+                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-emerald-600 outline-hidden"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        권한
+                      </label>
+                      <select
+                        value={newMemberRole}
+                        onChange={(e) => setNewMemberRole(e.target.value as UserRole)}
+                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-emerald-600 outline-hidden bg-white"
+                      >
+                        <option value="member">팀원</option>
+                        <option value="leader">팀장</option>
+                        <option value="admin">관리자</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        소속 부서 / 직책
+                      </label>
+                      <input
+                        type="text"
+                        value={newMemberDept}
+                        onChange={(e) => setNewMemberDept(e.target.value)}
+                        placeholder="예: 현장시설팀 (대리)"
+                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-emerald-600 outline-hidden"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        휴대폰 번호
+                      </label>
+                      <input
+                        type="text"
+                        value={newMemberPhone}
+                        onChange={(e) => handleAdminPhoneChange(e.target.value)}
+                        placeholder="010-0000-0000"
+                        className="w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs focus:border-emerald-600 outline-hidden"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-800 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" />
+                    <span>팀원 등록 및 접속 허가</span>
+                  </button>
+                </form>
+
+                {/* Team members list with delete capability for custom added members */}
+                <div className="pt-2 border-t border-slate-100">
+                  <span className="text-[11px] font-bold text-slate-500 block mb-1.5">
+                    등록된 팀원 현황
+                  </span>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {users.map((u) => (
+                      <div
+                        key={u.id}
+                        className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs border border-slate-200/60"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2.5 w-2.5 rounded-full ${u.avatarColor}`} />
+                          <span className="font-bold text-slate-800">{u.name}</span>
+                          <span className="text-[11px] text-slate-500">
+                            {u.phone} ({u.department})
                           </span>
                         </div>
+                        {u.id !== 'u-admin' && (
+                          <button
+                            type="button"
+                            onClick={() => deleteTeamMember(u.id)}
+                            className="text-slate-400 hover:text-rose-600 p-1 transition"
+                            title="팀원 삭제"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
                       </div>
-
-                      {isCurrent ? (
-                        <div className="flex items-center gap-1 text-xs font-bold text-emerald-700">
-                          <CheckCircle2 className="h-4 w-4" />
-                          <span>접속 중</span>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-2xs"
-                        >
-                          선택
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <p className="text-[11px] text-slate-400 text-center pt-2 break-keep">
-                💡 팀원 계정을 전환하면 각 담당자에게 배정된 실시간 업무와 알림을 그대로 확인할 수 있습니다.
-              </p>
-            </div>
-          )}
-
-          {/* TAB 3: Direct Phone / Account Login Form */}
-          {activeTab === 'form' && (
-            <form onSubmit={handleFormLogin} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  사번 / 휴대폰 번호 / 이름
-                </label>
-                <div className="relative">
-                  <Smartphone className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    value={accountInput}
-                    onChange={(e) => setAccountInput(e.target.value)}
-                    placeholder="예: 010-1234-5678 또는 김철수"
-                    className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden font-medium"
-                  />
+                    ))}
+                  </div>
                 </div>
               </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  비밀번호 (또는 현장 인증번호)
-                </label>
-                <div className="relative">
-                  <KeyRound className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                  <input
-                    type="password"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="임의의 번호 입력 가능 (예: 1234)"
-                    className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2.5 text-xs text-slate-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 outline-hidden"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-slate-600">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded text-emerald-700 focus:ring-emerald-600"
-                  />
-                  <span>현장 자동 로그인 유지</span>
-                </label>
-                <span className="text-slate-400 text-[11px]">보안 암호화 전송</span>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3 text-xs font-bold text-white shadow-md hover:bg-emerald-600 active:scale-98 transition"
-              >
-                <LogIn className="h-4 w-4" />
-                <span>현장 업무 로그인</span>
-              </button>
-
-              {/* Bottom Social Quick Row in Form tab */}
-              <div className="pt-2 border-t border-slate-100">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] text-slate-400">SNS 계정으로 즉시 로그인</span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('social')}
-                    className="text-[11px] font-bold text-emerald-700 hover:underline flex items-center gap-0.5"
-                  >
-                    <span>더보기</span>
-                    <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSocialLogin('kakao')}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#FEE500] py-2 text-[11px] font-bold text-[#191919] hover:bg-[#FDD800]"
-                    title="카카오 로그인"
-                  >
-                    <KakaoIcon className="h-4 w-4" />
-                    <span>카카오</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSocialLogin('naver')}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#03C75A] py-2 text-[11px] font-bold text-white hover:bg-[#02b350]"
-                    title="네이버 로그인"
-                  >
-                    <NaverIcon className="h-3 w-3" />
-                    <span>네이버</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSocialLogin('google')}
-                    className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-white border border-slate-300 py-2 text-[11px] font-bold text-slate-700 hover:bg-slate-50"
-                    title="Google 로그인"
-                  >
-                    <GoogleIcon className="h-4 w-4" />
-                    <span>Google</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 p-3 border border-slate-100 text-[11px] text-slate-500 leading-relaxed break-keep">
-                🔒 본 시스템은 행사 현장 담당자 및 초청 팀원 전용 업무 시스템입니다. 계정이 없으신 경우 관리자의 초대 링크(문자/카카오톡)를 통해 입장하세요.
-              </div>
-            </form>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5 text-slate-400">
-            <Shield className="h-3.5 w-3.5 text-emerald-700" />
-            <span className="text-[11px]">SSL 256-bit 보안 암호화 인증</span>
-          </div>
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs">
+          <span className="text-[11px] text-slate-500">
+            총괄관리자가 등록한 한글 이름과 일치 시 즉시 접속
+          </span>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl bg-white border border-slate-200 px-4 py-1.5 font-bold text-slate-700 hover:bg-slate-100 transition shadow-2xs"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-1.5 font-bold text-slate-700 hover:bg-slate-100 transition shadow-2xs"
           >
             닫기
           </button>
@@ -674,4 +509,3 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     </div>
   );
 };
-

@@ -21,6 +21,7 @@ interface HomeViewProps {
   onSelectTask: (task: Task) => void;
   onGoToEvents: () => void;
   onGoToMyTasks: () => void;
+  onGoToPhotos?: () => void;
   onQuickFieldAction: () => void;
   onOpenAiReport?: () => void;
   onOpenNewEvent?: () => void;
@@ -30,6 +31,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onSelectTask,
   onGoToEvents,
   onGoToMyTasks,
+  onGoToPhotos,
   onQuickFieldAction,
   onOpenAiReport,
   onOpenNewEvent,
@@ -38,6 +40,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     currentUser,
     currentEvent,
     eventTasks,
+    attachments,
     eventActivities,
     toggleTaskCompletion,
   } = useApp();
@@ -292,7 +295,64 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       )}
 
-      {/* 4. PRD 14 "최근 활동 (Live Timeline)" */}
+      {/* 4. 1분 현장기록 사진첩 Card (PRD/User Request) */}
+      <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-xs border border-emerald-900/10 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-800 text-white">
+              <Camera className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-sm sm:text-base font-black text-slate-900">
+                1분 현장기록 사진첩
+              </h2>
+              <span className="text-[11px] text-slate-500">
+                날짜별 실시간 현장 증빙 사진 ({attachments.filter((a) => a.fileType === 'image').length}장 보관)
+              </span>
+            </div>
+          </div>
+          {onGoToPhotos && (
+            <button
+              type="button"
+              onClick={onGoToPhotos}
+              className="flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 transition"
+            >
+              <span>사진첩 열기</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Thumbnail Preview Strip */}
+        <div className="grid grid-cols-3 gap-2">
+          {attachments
+            .filter((a) => a.fileType === 'image')
+            .slice(0, 3)
+            .map((photo) => (
+              <div
+                key={photo.id}
+                onClick={onGoToPhotos}
+                className="group relative aspect-16/10 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer shadow-2xs"
+              >
+                <img
+                  src={photo.fileUrl}
+                  alt={photo.fileName}
+                  className="h-full w-full object-cover group-hover:scale-105 transition"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex flex-col justify-end p-1.5">
+                  <span className="text-[10px] font-bold text-white truncate">
+                    {photo.fileName}
+                  </span>
+                  <span className="text-[9px] text-emerald-300 font-mono">
+                    {photo.uploadedAt.split(' ')[0]}
+                  </span>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
+
+      {/* 5. PRD 14 "최근 활동 (Live Timeline)" */}
       <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-xs border border-emerald-900/10">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-black text-slate-900">최근 활동 기록</h2>

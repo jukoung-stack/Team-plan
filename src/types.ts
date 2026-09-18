@@ -90,6 +90,7 @@ export interface AiChecklistRecommendation {
   priority: TaskPriority;
   recommendedDueDateDaysBefore: number;
   suggestedRole?: string;
+  reason?: string;
 }
 
 export interface EventResult {
@@ -141,5 +142,5 @@ export interface AppNotification {
   taskId?: string;
 }
 
-export type ActiveTab = 'home' | 'events' | 'schedule' | 'my_tasks' | 'more';
+export type ActiveTab = 'home' | 'events' | 'photos' | 'schedule' | 'my_tasks' | 'more';
 export type DeviceSkin = 'ios' | 'android' | 'responsive';

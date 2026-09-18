@@ -89,19 +89,19 @@ export const MoreView: React.FC<MoreViewProps> = ({
             <button
               type="button"
               onClick={onOpenLogin}
-              className="flex items-center gap-1.5 rounded-xl bg-emerald-800 text-white hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold transition shadow-xs"
+              className="flex items-center gap-1.5 rounded-xl bg-emerald-800 text-white hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold transition shadow-xs active:scale-95"
             >
               <LogIn className="h-3.5 w-3.5" />
-              <span>{isLoggedIn ? '계정 전환' : '로그인'}</span>
+              <span>로그인</span>
             </button>
           )}
         </div>
 
-        {/* Quick User Switch (Collaborative testing) */}
+        {/* Team Account Quick Switch */}
         <div className="mt-4 border-t border-slate-100 pt-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-slate-400 block">
-              팀원 계정 즉시 전환 (업무 동시 수행 테스트)
+              등록 팀원 목록 (총괄관리자 및 현장팀원)
             </span>
             {onOpenLogin && (
               <button
@@ -109,12 +109,12 @@ export const MoreView: React.FC<MoreViewProps> = ({
                 onClick={onOpenLogin}
                 className="text-[11px] font-bold text-emerald-800 hover:underline flex items-center gap-0.5"
               >
-                <span>소셜 로그인</span>
+                <span>이름/휴대폰 로그인</span>
                 <ChevronRight className="h-3 w-3" />
               </button>
             )}
           </div>
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {users.map((u) => (
               <button
                 key={u.id}
@@ -128,56 +128,10 @@ export const MoreView: React.FC<MoreViewProps> = ({
               >
                 <span className={`h-2 w-2 rounded-full ${u.avatarColor}`} />
                 <span>{u.name}</span>
+                <span className="text-[10px] text-slate-400">({u.role === 'admin' ? '총괄' : u.role === 'leader' ? '팀장' : '팀원'})</span>
               </button>
             ))}
           </div>
-
-          {/* Social Quick Login Row */}
-          {onOpenLogin && (
-            <div className="mt-3 pt-3 border-t border-dashed border-slate-200 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-slate-500">
-                SNS 간편 로그인:
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onOpenLogin}
-                  className="flex items-center gap-1 rounded-lg bg-[#FEE500] px-2.5 py-1 text-[11px] font-bold text-[#191919] hover:bg-[#FDD800] transition active:scale-95 shadow-2xs"
-                  title="카카오 로그인"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
-                    <path d="M12 3C6.477 3 2 6.477 2 10.765c0 2.758 1.838 5.176 4.632 6.556l-1.18 4.354a.6.6 0 0 0 .864.674l5.176-3.418c.168.012.338.018.508.018 5.523 0 10-3.477 10-7.765C22 6.477 17.523 3 12 3z" />
-                  </svg>
-                  <span>카카오</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenLogin}
-                  className="flex items-center gap-1 rounded-lg bg-[#03C75A] px-2.5 py-1 text-[11px] font-bold text-white hover:bg-[#02b350] transition active:scale-95 shadow-2xs"
-                  title="네이버 로그인"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3">
-                    <path d="M16.273 12.845 7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z" />
-                  </svg>
-                  <span>네이버</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={onOpenLogin}
-                  className="flex items-center gap-1 rounded-lg bg-white border border-slate-200 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition active:scale-95 shadow-2xs"
-                  title="Google 로그인"
-                >
-                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5">
-                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
-                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.26 21.36 7.36 24 12 24z" />
-                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z" />
-                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.26 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                  </svg>
-                  <span>Google</span>
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 

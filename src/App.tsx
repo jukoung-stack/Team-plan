@@ -6,6 +6,7 @@ import { HomeView } from './components/views/HomeView';
 import { EventsView } from './components/views/EventsView';
 import { ScheduleView } from './components/views/ScheduleView';
 import { MyTasksView } from './components/views/MyTasksView';
+import { FieldPhotosView } from './components/views/FieldPhotosView';
 import { MoreView } from './components/views/MoreView';
 import { TaskDetailModal } from './components/tasks/TaskDetailModal';
 import {
@@ -90,6 +91,7 @@ const MainApp: React.FC = () => {
             onSelectTask={handleOpenTask}
             onGoToEvents={() => setActiveTab('events')}
             onGoToMyTasks={() => setActiveTab('my_tasks')}
+            onGoToPhotos={() => setActiveTab('photos')}
             onQuickFieldAction={handleQuickFieldAction}
             onOpenAiReport={() => handleOpenAiReport()}
             onOpenNewEvent={() => setIsNewEventOpen(true)}
@@ -108,6 +110,13 @@ const MainApp: React.FC = () => {
         );
       case 'schedule':
         return <ScheduleView onSelectTask={handleOpenTask} />;
+      case 'photos':
+        return (
+          <FieldPhotosView
+            onOpenAiReport={handleOpenAiReport}
+            onSelectTask={handleOpenTask}
+          />
+        );
       case 'my_tasks':
         return <MyTasksView onSelectTask={handleOpenTask} />;
       case 'more':

@@ -10,7 +10,8 @@ import {
   AppNotification,
   ActiveTab,
   DeviceSkin,
-  EventResult
+  EventResult,
+  UserRole
 } from '../types';
 import {
   INITIAL_USERS,
@@ -48,6 +49,13 @@ interface AppContextType {
   isLoggedIn: boolean;
   login: (user: User) => void;
   logout: () => void;
+  addTeamMember: (data: {
+    name: string;
+    department: string;
+    phone: string;
+    role?: UserRole;
+  }) => { success: boolean; message: string; user?: User };
+  deleteTeamMember: (userId: string) => { success: boolean; message: string };
   
   // Actions
   toggleTaskCompletion: (taskId: string, memberId?: string) => void;
@@ -706,6 +714,114 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, JSON.stringify(false));
   };
 
+  const addTeamMember = (data: {
+    name: string;
+    department: string;
+    phone: string;
+    role?: UserRole;
+  }): { success: boolean; message: string; user?: User } => {
+    const trimmedName = data.name.trim();
+    if (!trimmedName) {
+      return { success: false, message: '팀원명을 입력해주세요.' };
+    }
+
+    // Must be Korean name (2~10 Korean characters)
+    const koreanNameRegex = /^[가-힣\s]{2,10}$/;
+    if (!koreanNameRegex.test(trimmedName)) {
+      return {
+        success: false,
+        message: '팀원명은 2~10자의 한글 이름으로 입력해야 합니다. (예: 홍길동)',
+      };
+    }
+
+    // Check duplicate name
+    if (users.some((u) => u.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      return {
+        success: false,
+        message: `'${trimmedName}' 이름의 팀원이 이미 등록되어 있습니다. 다른 이름을 사용하거나 직함을 병기해주세요.`,
+      };
+    }
+
+    const trimmedPhone = data.phone.trim();
+    const phoneDigits = trimmedPhone.replace(/[^0-9]/g, '');
+    if (phoneDigits.length < 9) {
+      return {
+        success: false,
+        message: '유효한 휴대폰 번호를 입력해주세요. (예: 010-1234-5678)',
+      };
+    }
+
+    // Format phone if standard 11 digits
+    let formattedPhone = trimmedPhone;
+    if (phoneDigits.length === 11 && phoneDigits.startsWith('010')) {
+      formattedPhone = `${phoneDigits.slice(0, 3)}-${phoneDigits.slice(3, 7)}-${phoneDigits.slice(7)}`;
+    }
+
+    const avatarColors = [
+      'bg-blue-600',
+      'bg-emerald-600',
+      'bg-amber-600',
+      'bg-violet-600',
+      'bg-teal-600',
+      'bg-indigo-600',
+      'bg-rose-600',
+      'bg-cyan-600',
+    ];
+    const assignedColor = avatarColors[users.length % avatarColors.length];
+
+    const newMember: User = {
+      id: `u-${Date.now()}`,
+      name: trimmedName,
+      role: data.role || 'member',
+      department: data.department.trim() || '현장운영팀',
+      phone: formattedPhone,
+      avatarColor: assignedColor,
+    };
+
+    setUsers((prev) => [...prev, newMember]);
+
+    const act: Activity = {
+      id: `act-${Date.now()}`,
+      eventId: currentEventId,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      actionType: 'create_task',
+      message: `👤 신규 팀원 '${newMember.name}'(${newMember.department}) 등록 완료`,
+      timestamp: `${timeOnly()} ${currentUser.name}`,
+      detail: `연락처: ${newMember.phone}, 권한: ${newMember.role}`,
+    };
+    setActivities((prev) => [act, ...prev]);
+
+    return {
+      success: true,
+      message: `'${newMember.name}' 팀원이 등록되었습니다. 이제 해당 이름과 휴대폰 번호로 로그인이 가능합니다.`,
+      user: newMember,
+    };
+  };
+
+  const deleteTeamMember = (userId: string): { success: boolean; message: string } => {
+    const target = users.find((u) => u.id === userId);
+    if (!target) {
+      return { success: false, message: '해당 팀원을 찾을 수 없습니다.' };
+    }
+    if (target.id === 'u-admin') {
+      return { success: false, message: '시스템 기본 총괄관리자 계정은 삭제할 수 없습니다.' };
+    }
+
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
+
+    // If current logged-in user was deleted, fallback to admin
+    if (currentUserId === userId) {
+      const admin = users.find((u) => u.id === 'u-admin') || users[0];
+      setCurrentUserId(admin.id);
+    }
+
+    return {
+      success: true,
+      message: `'${target.name}' 팀원이 삭제되었습니다.`,
+    };
+  };
+
   const resetToSampleData = () => {
     setUsers(INITIAL_USERS);
     setCurrentUserId('u-1');
@@ -729,6 +845,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isLoggedIn,
         login,
         logout,
+        addTeamMember,
+        deleteTeamMember,
         events,
         currentEventId,
         setCurrentEventId,

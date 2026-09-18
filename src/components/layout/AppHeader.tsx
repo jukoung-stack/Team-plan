@@ -229,10 +229,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent, onOpenLogi
                 ? 'bg-emerald-800 text-white hover:bg-emerald-700'
                 : 'bg-emerald-700 text-white hover:bg-emerald-600 ring-2 ring-emerald-400/40'
             }`}
-            title={isLoggedIn ? '계정 전환 및 로그인' : '현장 업무 로그인'}
+            title="현장 업무 로그인"
           >
             <LogIn className="h-3.5 w-3.5" />
-            <span>{isLoggedIn ? '로그인/전환' : '로그인'}</span>
+            <span>로그인</span>
           </button>
 
           {/* User Switcher (For collaborative testing of PRD team roles) */}
