@@ -131,6 +131,18 @@ export interface EventItem {
   result?: EventResult;
 }
 
+export interface EmergencySupportCenter {
+  centerName: string; // 지원센터/상황실 명칭
+  phone: string; // 대표 긴급 연락처
+  secondaryPhone?: string; // 비상 직통/2차 연락처
+  managerName: string; // 총괄 책임자/담당자
+  operatingHours: string; // 운영 시간 안내
+  location: string; // 현장 상황실 위치
+  notice: string; // 긴급 지원 안내 및 수칙
+  updatedAt: string; // 최종 업데이트 일시
+  updatedBy: string; // 입력/수정한 총괄관리자명
+}
+
 export interface AppNotification {
   id: string;
   title: string;

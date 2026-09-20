@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Shield,
   Phone,
   Users,
   Sparkles,
-  Headphones
+  Headphones,
+  Edit3,
+  MapPin
 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { EmergencyCenterModal } from '../common/EmergencyCenterModal';
 
 interface AppFooterProps {
   onOpenInvite?: () => void;
@@ -18,6 +22,11 @@ export const AppFooter: React.FC<AppFooterProps> = ({
   onOpenLogin,
   onOpenNewEvent,
 }) => {
+  const { emergencyCenter, currentUser } = useApp();
+  const isAdmin = currentUser.role === 'admin';
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
+  const [emergencyModalEditMode, setEmergencyModalEditMode] = useState(false);
+
   return (
     <footer className="mt-8 border-t border-emerald-950/10 bg-slate-900 text-slate-400 text-xs pb-24 sm:pb-20 break-keep">
       {/* Top Feature Highlights Bar */}
@@ -63,7 +72,7 @@ export const AppFooter: React.FC<AppFooterProps> = ({
                 className="rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 transition text-[11px] flex items-center gap-1.5 border border-emerald-600/50 shadow-xs active:scale-95"
               >
                 <Users className="h-3.5 w-3.5" />
-                <span>로그인 (카카오·네이버·구글)</span>
+                <span>로그인</span>
               </button>
             )}
             {onOpenInvite && (
@@ -91,29 +100,76 @@ export const AppFooter: React.FC<AppFooterProps> = ({
 
         {/* 2-Column Info Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-[11px] leading-relaxed">
-          {/* Col 1: 현장 긴급 지원 센터 */}
-          <div className="space-y-2 bg-slate-800/40 p-3.5 rounded-2xl border border-slate-800">
-            <span className="font-extrabold text-slate-200 block text-xs flex items-center gap-1.5">
-              <Headphones className="h-4 w-4 text-emerald-400" />
-              현장 긴급 지원센터
-            </span>
-            <p className="text-slate-400">
-              행사 진행 중 긴급 오류나 현장 네트워크 문의 시 전담 지원센터에서 지원합니다.
+          {/* Col 1: 현장 긴급 지원 센터 (총괄관리자 별도 입력 & 팀원 실시간 공유) */}
+          <div className="space-y-2.5 bg-slate-800/40 p-4 rounded-2xl border border-slate-800">
+            <div className="flex items-center justify-between">
+              <span className="font-extrabold text-slate-200 block text-xs flex items-center gap-1.5">
+                <Headphones className="h-4 w-4 text-emerald-400" />
+                {emergencyCenter.centerName}
+              </span>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmergencyModalEditMode(true);
+                    setIsEmergencyModalOpen(true);
+                  }}
+                  className="flex items-center gap-1 rounded-lg bg-amber-400/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 text-[10px] font-bold hover:bg-amber-400/30 transition active:scale-95"
+                  title="총괄관리자 긴급지원센터 정보 입력/수정"
+                >
+                  <Edit3 className="h-3 w-3" />
+                  <span>총괄관리자 입력</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmergencyModalEditMode(false);
+                    setIsEmergencyModalOpen(true);
+                  }}
+                  className="flex items-center gap-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold hover:bg-emerald-500/20 transition"
+                  title="팀원 열람 및 전화 연결"
+                >
+                  <span>상세 안내</span>
+                </button>
+              )}
+            </div>
+
+            <p className="text-slate-400 leading-relaxed text-[11px]">
+              {emergencyCenter.notice}
             </p>
-            <div className="pt-1 font-mono">
+
+            <div className="pt-0.5 flex flex-wrap items-center justify-between gap-2">
               <a
-                href="tel:041-537-3748"
-                className="inline-flex items-center gap-2 text-white font-black text-sm hover:text-emerald-300 transition"
+                href={`tel:${emergencyCenter.phone}`}
+                className="inline-flex items-center gap-2 text-white font-black text-sm hover:text-emerald-300 transition font-mono"
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                   <Phone className="h-4 w-4 shrink-0" />
                 </div>
-                <span>041-537-3748</span>
+                <span>{emergencyCenter.phone}</span>
               </a>
+
+              {emergencyCenter.secondaryPhone && (
+                <span className="text-[10px] text-slate-400 font-mono">
+                  직통: {emergencyCenter.secondaryPhone}
+                </span>
+              )}
             </div>
-            <span className="text-[10px] text-slate-400 block pt-0.5">
-              운영 시간: 평일 09:00~18:00
-            </span>
+
+            <div className="pt-2 border-t border-slate-800/90 text-[10px] text-slate-400 space-y-1">
+              <div className="flex items-center gap-1.5 text-slate-300 font-medium">
+                <MapPin className="h-3 w-3 text-rose-400 shrink-0" />
+                <span className="truncate">{emergencyCenter.location}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                <span>운영: {emergencyCenter.operatingHours}</span>
+                <span className="text-emerald-400/90 font-medium flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  {isAdmin ? '총괄관리자 관리' : '팀원 실시간 공유'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Col 2: 플랫폼 및 보안 사양 */}
@@ -150,6 +206,13 @@ export const AppFooter: React.FC<AppFooterProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Emergency Center Modal (View for team members / Edit for admin) */}
+      <EmergencyCenterModal
+        isOpen={isEmergencyModalOpen}
+        onClose={() => setIsEmergencyModalOpen(false)}
+        initialEditMode={emergencyModalEditMode}
+      />
     </footer>
   );
 };

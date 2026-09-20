@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Task, EventItem } from '../../types';
+import { ProtocolManualModal } from '../events/ProtocolManualModal';
 
 interface EventsViewProps {
   onSelectTask: (task: Task) => void;
@@ -63,6 +64,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskCategory, setNewTaskCategory] = useState('현장');
   const [newTaskDueDate, setNewTaskDueDate] = useState('2026-09-25');
+  const [isProtocolModalOpen, setIsProtocolModalOpen] = useState(false);
 
   // Filter events
   const filteredEvents = events.filter((evt) => {
@@ -87,8 +89,8 @@ export const EventsView: React.FC<EventsViewProps> = ({
   const doneTasks = eventTasks.filter((t) => t.status === 'done').length;
   const progressPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
-  // Group tasks by category
-  const categories = ['기획', '홍보', '현장', '계약', '종료'];
+  // Group tasks by category (including 의전 per manual)
+  const categories = ['기획', '의전', '홍보', '현장', '계약', '종료'];
   const groupedTasks: { [key: string]: Task[] } = {};
   categories.forEach((cat) => {
     groupedTasks[cat] = eventTasks.filter((t) => t.category === cat);
@@ -118,7 +120,7 @@ export const EventsView: React.FC<EventsViewProps> = ({
       priority: 'medium',
       assignees: [
         {
-          id: `tm-${Date.now()}`,
+          id: `tm-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           userId: currentUser.id,
           userName: currentUser.name,
           isCompleted: false,
@@ -281,12 +283,53 @@ export const EventsView: React.FC<EventsViewProps> = ({
 
           {/* SubTab 1: 체크리스트 */}
           {activeSubTab === 'checklist' && (
-            <div className="mt-4 space-y-5">
+            <div className="mt-4 space-y-4">
+              {/* Protocol / Etiquette Manual Reference Banner */}
+              <div className="rounded-2xl border border-amber-300/80 bg-linear-to-r from-amber-50/90 via-amber-50/40 to-emerald-50/70 p-3.5 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-900 border border-amber-300">
+                      <Award className="h-5 w-5 text-amber-700" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-md bg-amber-200 px-1.5 py-0.5 text-[10px] font-black text-amber-950">
+                          아산시 공식
+                        </span>
+                        <h4 className="text-xs font-black text-slate-900">
+                          민선8기 보훈(報勳) 의전 매뉴얼 지침 준수
+                        </h4>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                        보훈대상자·노인회장 <strong>첫줄 좌석 우선 배치</strong>, 공식 내빈소개 순서(시장➔시의장➔국회의원➔노인회장, 보훈·유공단체장...), 전용 주차 및 요원 배치를 체크하세요.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsProtocolModalOpen(true)}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-700 hover:bg-amber-800 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition shrink-0 active:scale-95"
+                  >
+                    <Award className="h-3.5 w-3.5" />
+                    <span>의전 매뉴얼 열람</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500 font-medium">
                   팀원 모두 실시간으로 같은 체크리스트를 확인하고 완료합니다.
                 </span>
                 <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsProtocolModalOpen(true)}
+                    className="flex items-center gap-1 rounded-lg bg-amber-100/80 px-2 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-200 transition border border-amber-300"
+                    title="민선8기 보훈 의전 계획 매뉴얼"
+                  >
+                    <Award className="h-3 w-3 text-amber-700" />
+                    <span>의전 매뉴얼</span>
+                  </button>
                   <button
                     type="button"
                     onClick={onOpenNewEvent}
@@ -866,6 +909,13 @@ export const EventsView: React.FC<EventsViewProps> = ({
           })}
         </div>
       </div>
+
+      {/* Protocol Manual Modal */}
+      <ProtocolManualModal
+        isOpen={isProtocolModalOpen}
+        onClose={() => setIsProtocolModalOpen(false)}
+        event={currentEvent}
+      />
     </div>
   );
 };

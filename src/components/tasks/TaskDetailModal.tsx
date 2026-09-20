@@ -16,11 +16,13 @@ import {
   AlertCircle,
   ExternalLink,
   Users,
-  Check
+  Check,
+  Award
 } from 'lucide-react';
 import { Task, TaskMember } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { CameraCaptureModal } from '../common/CameraCaptureModal';
+import { ProtocolManualModal } from '../events/ProtocolManualModal';
 
 interface TaskDetailModalProps {
   task: Task | null;
@@ -50,6 +52,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
   const [commentText, setCommentText] = useState<string>('');
   const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
   const [isCompletedState, setIsCompletedState] = useState<boolean>(task?.status === 'done');
+  const [isProtocolModalOpen, setIsProtocolModalOpen] = useState<boolean>(false);
 
   // Staged attachments for instant upload
   const [newImages, setNewImages] = useState<{ fileName: string; fileUrl: string; fileSize: string }[]>([]);
@@ -227,6 +230,33 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 </p>
               )}
             </div>
+
+            {/* Protocol (의전) Guidance Card */}
+            {(task.category === '의전' ||
+              task.title.includes('의전') ||
+              task.title.includes('보훈') ||
+              task.title.includes('내빈')) && (
+              <div className="rounded-2xl border border-amber-300 bg-linear-to-r from-amber-50 via-amber-50/50 to-orange-50/30 p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-black text-xs text-amber-950">
+                    <Award className="h-4 w-4 text-amber-700" />
+                    <span>아산시 민선8기 보훈(報勳) 의전 매뉴얼 지침 적용</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsProtocolModalOpen(true)}
+                    className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline underline-offset-2"
+                  >
+                    매뉴얼 전체보기 &gt;
+                  </button>
+                </div>
+                <div className="text-xs text-amber-900/90 leading-relaxed space-y-1">
+                  <p>• <strong>좌석 첫줄 우선배치:</strong> 노인회장, 보훈대상자(참전용사·유족), 시를 빛낸 유공자, 아너소사이어티 가입자</p>
+                  <p>• <strong>내빈소개 순서:</strong> 시장 ➔ 시의장 ➔ 국회의원 ➔ <strong>노인회장, 보훈·유공단체장</strong> ➔ 주요기관장 ➔ 도의원 ➔ 시의원</p>
+                  <p>• <strong>주차 &amp; 요원:</strong> 전용 주차공간 확보 및 거동 불편 시 1:1 의전 요원 안내 동선 편성</p>
+                </div>
+              </div>
+            )}
 
             {/* Meta info grid */}
             <div className="grid grid-cols-2 gap-3 rounded-xl bg-slate-50 p-3.5 border border-slate-100 text-xs sm:text-sm">
@@ -615,6 +645,11 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
         </div>
       )}
+      {/* Protocol Manual Modal */}
+      <ProtocolManualModal
+        isOpen={isProtocolModalOpen}
+        onClose={() => setIsProtocolModalOpen(false)}
+      />
     </>
   );
 };

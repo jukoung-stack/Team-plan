@@ -125,6 +125,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     }, 900);
   };
 
+  // Delete team member handler
+  const handleDeleteMember = (e: React.MouseEvent, user: User) => {
+    e.stopPropagation();
+    if (user.id === 'u-admin') {
+      setErrorMessage('시스템 기본 총괄관리자 계정은 삭제할 수 없습니다.');
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+
+    const res = deleteTeamMember(user.id);
+    if (res.success) {
+      setSuccessMessage(`'${user.name}' 팀원이 등록 명단에서 삭제되었습니다.`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+      if (nameInput.trim() === user.name.trim()) {
+        setNameInput('');
+        setPhoneInput('');
+      }
+    } else {
+      setErrorMessage(res.message);
+      setTimeout(() => setErrorMessage(null), 3000);
+    }
+  };
+
   // Quick select helper
   const handleSelectQuickUser = (u: User) => {
     setNameInput(u.name);
@@ -318,7 +341,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5 text-slate-400" />
-                <span>등록된 팀원 명단 (클릭 시 자동 입력)</span>
+                <span>등록된 팀원 명단 (클릭 시 자동 입력, X 클릭 시 삭제)</span>
               </span>
               <span className="text-[10px] text-slate-400">총 {users.length}명</span>
             </div>
@@ -329,22 +352,50 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   phoneInput.replace(/[^0-9]/g, '') === u.phone.replace(/[^0-9]/g, '');
 
                 return (
-                  <button
+                  <div
                     key={u.id}
-                    type="button"
-                    onClick={() => handleSelectQuickUser(u)}
-                    className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs transition border ${
+                    className={`inline-flex items-center rounded-lg border text-xs transition ${
                       isSelected
                         ? 'border-emerald-600 bg-emerald-100/80 text-emerald-900 font-bold shadow-2xs'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                     }`}
                   >
-                    <span className={`h-2 w-2 rounded-full ${u.avatarColor}`} />
-                    <span>{u.name}</span>
-                    <span className="text-[10px] text-slate-400">
-                      {u.role === 'admin' ? '(총괄)' : u.role === 'leader' ? '(팀장)' : ''}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectQuickUser(u)}
+                      className="flex items-center gap-1.5 py-1 pl-2 pr-1 hover:opacity-80 transition"
+                      title="클릭 시 로그인 입력창에 자동 입력"
+                    >
+                      <span
+                        className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shrink-0 ${u.avatarColor}`}
+                      >
+                        {u.name[0]}
+                      </span>
+                      <span>{u.name}</span>
+                      <span className="text-[10px] text-slate-400">
+                        {u.role === 'admin' ? '(총괄)' : u.role === 'leader' ? '(팀장)' : ''}
+                      </span>
+                    </button>
+
+                    {u.id !== 'u-admin' ? (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteMember(e, u)}
+                        className="mr-1.5 rounded-md p-0.5 text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition"
+                        title={`${u.name} 팀원 삭제`}
+                        aria-label={`${u.name} 삭제`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    ) : (
+                      <span
+                        className="mr-1.5 text-[9px] text-slate-300 select-none px-0.5"
+                        title="총괄관리자는 기본 계정으로 삭제 불가"
+                      >
+                        ·
+                      </span>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -467,7 +518,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                         className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs border border-slate-200/60"
                       >
                         <div className="flex items-center gap-2">
-                          <span className={`h-2.5 w-2.5 rounded-full ${u.avatarColor}`} />
+                          <span
+                            className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shrink-0 ${u.avatarColor}`}
+                          >
+                            {u.name[0]}
+                          </span>
                           <span className="font-bold text-slate-800">{u.name}</span>
                           <span className="text-[11px] text-slate-500">
                             {u.phone} ({u.department})
@@ -476,11 +531,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                         {u.id !== 'u-admin' && (
                           <button
                             type="button"
-                            onClick={() => deleteTeamMember(u.id)}
-                            className="text-slate-400 hover:text-rose-600 p-1 transition"
-                            title="팀원 삭제"
+                            onClick={(e) => handleDeleteMember(e, u)}
+                            className="flex items-center gap-1 rounded-md p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                            title={`${u.name} 팀원 삭제`}
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         )}
                       </div>

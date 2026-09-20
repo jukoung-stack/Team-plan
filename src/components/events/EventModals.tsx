@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Plus,
@@ -18,10 +18,15 @@ import {
   UserPlus,
   Shield,
   Trash2,
-  UserCheck
+  UserCheck,
+  BookOpen,
+  Info,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { EventItem, EventResult, AiChecklistRecommendation, UserRole } from '../../types';
+import { EVENT_TYPE_STANDARDS, EventTypeStandardInfo } from '../../data/eventTypeStandards';
 
 // 1. New Event Modal with AI Past Event Analysis & Checklist Recommendations
 interface NewEventModalProps {
@@ -30,25 +35,66 @@ interface NewEventModalProps {
 }
 
 export const NewEventModal: React.FC<NewEventModalProps> = ({ isOpen, onClose }) => {
-  const { createEvent, templates, events, createTask } = useApp();
+  const { createEvent, templates, events, createTask, createTasksBatch } = useApp();
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('2026.10.20');
   const [location, setLocation] = useState('아산 시민광장 야외데크');
   const [description, setDescription] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('tmpl-agri');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('tmpl-outdoor-festival');
 
-  // AI Recommendation configuration
-  const [eventType, setEventType] = useState('농산물 판촉행사');
-  const [eventScale, setEventScale] = useState('중규모 (100~500명)');
+  // AI & Official Event Standards Configuration
+  const [selectedStandardId, setSelectedStandardId] = useState<string>('type-outdoor-festival');
+  const [eventType, setEventType] = useState('대규모 야외축제형');
+  const [eventScale, setEventScale] = useState('대규모 (500~2,000명)');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [recommendedTasks, setRecommendedTasks] = useState<
     (AiChecklistRecommendation & { selected: boolean })[]
   >([]);
+  const [showStandardsInfo, setShowStandardsInfo] = useState(true);
+
+  const currentStandard =
+    EVENT_TYPE_STANDARDS.find((s) => s.id === selectedStandardId) || EVENT_TYPE_STANDARDS[0];
+
+  // When standard type changes, sync default scale, template, and initial focus checklist
+  const handleSelectStandardType = (standard: EventTypeStandardInfo) => {
+    setSelectedStandardId(standard.id);
+    setEventType(standard.type);
+    setEventScale(standard.defaultScale);
+
+    // Sync matching template if exists
+    const matchingTemplate = templates.find((t) => t.id.includes(standard.id.replace('type-', '')));
+    if (matchingTemplate) {
+      setSelectedTemplateId(matchingTemplate.id);
+    }
+
+    // Populate default focus checklist from the standard reference
+    const initialChecklist = standard.recommendedChecklists.map((item) => ({
+      category: item.category,
+      title: item.title,
+      description: item.description,
+      priority: item.priority,
+      recommendedDueDateDaysBefore: item.recommendedDueDateDaysBefore,
+      suggestedRole: item.suggestedRole,
+      reason: `[${standard.type} 표준 중점] ${item.focusPointTag}`,
+      selected: true,
+    }));
+    setRecommendedTasks(initialChecklist);
+    setAiInsight(
+      `[${standard.type} 표준 기본자료 적용] 대표 사례(${standard.examples})의 중점 점검사항(${standard.focusPoints})과 보훈 의전 지침을 반영한 표준 체크리스트입니다.`
+    );
+  };
+
+  // Initialize with the first standard when opened if empty
+  useEffect(() => {
+    if (isOpen && recommendedTasks.length === 0) {
+      handleSelectStandardType(EVENT_TYPE_STANDARDS[0]);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Request AI Checklist Recommendation based on past event data
+  // Request AI Checklist Recommendation based on past event data & 8 standards
   const handleRequestAiRecommendations = async () => {
     setIsAiLoading(true);
     try {
@@ -89,46 +135,21 @@ export const NewEventModal: React.FC<NewEventModalProps> = ({ isOpen, onClose })
       }
     } catch (err) {
       console.warn('Fallback recommendation engine triggered:', err);
-      // Resilient fallback generator ensuring 100% availability on Vercel / static hosting
-      const fallbackRecs: AiChecklistRecommendation[] = [
-        {
-          title: `[필수 현장점검] ${eventType} 야외 배선 절연 및 임시 분전반 사전 부하 테스트`,
-          category: '현장',
-          description: '과거 행사 전력 과부하 발생 이력 반영: 고용량 전열기기 및 음향 시스템 부하 분산 필수',
-          priority: 'high',
-          recommendedDueDateDaysBefore: 3,
-          suggestedRole: '현장팀장',
-          reason: '과거 행사 전력 과부하 발생 이력 반영: 고용량 전열기기 및 음향 시스템 부하 분산 필수',
-        },
-        {
-          title: `[안전/우천대비] 비상 우천용 대형 방수포 및 관람객 미끄럼 방지 매트 설치`,
-          category: '현장',
-          description: '기상 급변 시 전자기기 침수 방지 및 관람객 안전사고 예방',
-          priority: 'high',
-          recommendedDueDateDaysBefore: 1,
-          suggestedRole: '안전요원',
-          reason: '기상 급변 시 전자기기 침수 방지 및 관람객 안전사고 예방',
-        },
-        {
-          title: `[행사홍보] ${eventType} 대표 참여 프로그램 및 부스 안내 모바일 리플릿 QR 배포`,
-          category: '홍보',
-          description: '현장 방문객 만족도 제고 및 대기열 혼잡 완화',
-          priority: 'medium',
-          recommendedDueDateDaysBefore: 2,
-          suggestedRole: '홍보담당',
-          reason: '현장 방문객 만족도 제고 및 대기열 혼잡 완화',
-        },
-        {
-          title: `[운영계약] 임시 주차장 셔틀버스 및 교통 통제 인력 사전 안전 교육`,
-          category: '계약',
-          description: '진입 도로 정체 방지 및 보행자 안전 동선 확보',
-          priority: 'medium',
-          recommendedDueDateDaysBefore: 5,
-          suggestedRole: '계약담당',
-          reason: '진입 도로 정체 방지 및 보행자 안전 동선 확보',
-        },
-      ];
-      setAiInsight(`[복원 모드 가동] 과거 유사 행사 데이터를 분석하여 '${eventType}'(${eventScale})에 최적화된 리스크 예방 체크리스트 4건을 추천했습니다.`);
+      // Fallback matching the standard's recommended checklists
+      const fallbackRecs: AiChecklistRecommendation[] = currentStandard.recommendedChecklists.map(
+        (chk) => ({
+          title: chk.title,
+          category: chk.category,
+          description: chk.description,
+          priority: chk.priority,
+          recommendedDueDateDaysBefore: chk.recommendedDueDateDaysBefore,
+          suggestedRole: chk.suggestedRole,
+          reason: `[${currentStandard.type} 표준 점검사항] ${chk.focusPointTag}`,
+        })
+      );
+      setAiInsight(
+        `[공식 표준 가이드 연동] '${currentStandard.type}'(${currentStandard.examples})의 중점 점검사항(${currentStandard.focusPoints})과 보훈 의전 지침을 반영한 체크리스트 ${fallbackRecs.length}건을 추천했습니다.`
+      );
       setRecommendedTasks(fallbackRecs.map((item) => ({ ...item, selected: true })));
     } finally {
       setIsAiLoading(false);
@@ -151,37 +172,35 @@ export const NewEventModal: React.FC<NewEventModalProps> = ({ isOpen, onClose })
         title: title.trim(),
         date: date.trim(),
         location: location.trim() || '현장 장소 미정',
-        description: description.trim() || `${eventType} (${eventScale})`,
+        description: description.trim() || `${eventType} [${currentStandard.examples || eventScale}]`,
         status: 'in_progress',
         coverGradient: 'from-emerald-800 to-teal-900',
       },
       selectedTemplateId || undefined
     );
 
-    // If AI recommended tasks were selected, add them to the created event
+    // If AI recommended tasks were selected, add them to the created event in a single batch
     const selectedAiTasks = recommendedTasks.filter((t) => t.selected);
     if (newEventId && selectedAiTasks.length > 0) {
-      selectedAiTasks.forEach((aiTask) => {
-        // Calculate due date relative to event date
-        createTask({
-          eventId: newEventId,
-          category: aiTask.category,
-          title: aiTask.title,
-          description: `[AI 과거 분석 추천] ${aiTask.description}`,
-          dueDate: date.replace(/\./g, '-'),
-          status: 'in_progress',
-          priority: aiTask.priority,
-          assignees: [
-            {
-              id: `ai-assign-${Date.now()}-${Math.random()}`,
-              userId: 'u1',
-              userName: '김철수',
-              subTaskName: aiTask.suggestedRole || '담당자',
-              isCompleted: false,
-            },
-          ],
-        });
-      });
+      const tasksToCreate = selectedAiTasks.map((aiTask, idx) => ({
+        eventId: newEventId,
+        category: aiTask.category,
+        title: aiTask.title,
+        description: `[${eventType} 중점점검] ${aiTask.description}`,
+        dueDate: date.replace(/\./g, '-'),
+        status: 'in_progress' as const,
+        priority: aiTask.priority,
+        assignees: [
+          {
+            id: `ai-assign-${Date.now()}-${idx}`,
+            userId: 'u1',
+            userName: '김철수',
+            subTaskName: aiTask.suggestedRole || '담당자',
+            isCompleted: false,
+          },
+        ],
+      }));
+      createTasksBatch(tasksToCreate);
     }
 
     onClose();
@@ -253,27 +272,80 @@ export const NewEventModal: React.FC<NewEventModalProps> = ({ isOpen, onClose })
           <div className="rounded-2xl border border-emerald-900/10 bg-emerald-50/40 p-3.5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-emerald-700" />
-                AI 과거 데이터 분석 맞춤 추천
+                <BookOpen className="h-4 w-4 text-emerald-700" />
+                행사 운영 표준 기본자료 & AI 맞춤 추천
               </span>
-              <span className="rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                과거 교훈 반영
-              </span>
+              <button
+                type="button"
+                onClick={() => setShowStandardsInfo(!showStandardsInfo)}
+                className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1"
+              >
+                {showStandardsInfo ? '기준표 접기' : '기준표 보기'}
+                {showStandardsInfo ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
             </div>
+
+            {/* 8 Official Event Standards Reference Card */}
+            {showStandardsInfo && (
+              <div className="rounded-xl bg-white p-3 border border-emerald-200/80 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700">
+                    운영형 행사 기본자료 (8개 표준 모델)
+                  </span>
+                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-800">
+                    참고 기본자료
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {EVENT_TYPE_STANDARDS.map((std) => (
+                    <button
+                      key={std.id}
+                      type="button"
+                      onClick={() => handleSelectStandardType(std)}
+                      className={`text-left p-1.5 rounded-lg border text-[11px] transition ${
+                        selectedStandardId === std.id
+                          ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-bold ring-1 ring-emerald-600'
+                          : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <div className="truncate">{std.type}</div>
+                      <div className="text-[9px] text-slate-400 truncate mt-0.5">{std.examples}</div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Selected Standard Details Banner */}
+                <div className="rounded-lg bg-emerald-50/60 p-2 border border-emerald-100 text-[11px] space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-950">
+                    <Info className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                    <span>{currentStandard.type}</span>
+                    <span className="text-[10px] text-emerald-700 font-normal">
+                      (대표사례: {currentStandard.examples})
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-600 leading-snug">
+                    <strong className="text-slate-800">중점 점검사항:</strong> {currentStandard.focusPoints}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">행사 유형</label>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">행사 유형 선택</label>
                 <select
-                  value={eventType}
-                  onChange={(e) => setEventType(e.target.value)}
+                  value={selectedStandardId}
+                  onChange={(e) => {
+                    const std = EVENT_TYPE_STANDARDS.find((s) => s.id === e.target.value);
+                    if (std) handleSelectStandardType(std);
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-white p-2 font-medium text-slate-800 outline-hidden"
                 >
-                  <option value="농산물 판촉행사">농산물 판촉행사</option>
-                  <option value="지역 문화축제">지역 문화축제</option>
-                  <option value="체육대회/워크숍">체육대회/워크숍</option>
-                  <option value="플리마켓/바자회">플리마켓/바자회</option>
-                  <option value="전시/학술 컨퍼런스">전시/학술 컨퍼런스</option>
+                  {EVENT_TYPE_STANDARDS.map((std) => (
+                    <option key={std.id} value={std.id}>
+                      {std.type} ({std.examples})
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -291,25 +363,35 @@ export const NewEventModal: React.FC<NewEventModalProps> = ({ isOpen, onClose })
               </div>
             </div>
 
-            {/* AI Recommendation Trigger Button */}
-            <button
-              type="button"
-              onClick={handleRequestAiRecommendations}
-              disabled={isAiLoading}
-              className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-800 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition disabled:opacity-60"
-            >
-              {isAiLoading ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin text-emerald-300" />
-                  <span>과거 유사 행사 문제점 및 지연 사례 분석 중...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 text-emerald-300" />
-                  <span>과거 데이터 기반 필수 체크리스트 AI 추천받기</span>
-                </>
-              )}
-            </button>
+            {/* AI Recommendation Trigger Button (Maintained as requested) */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRequestAiRecommendations}
+                disabled={isAiLoading}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-emerald-800 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition disabled:opacity-60"
+              >
+                {isAiLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin text-emerald-300" />
+                    <span>과거 유사 행사 문제점 및 8개 표준 분석 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 text-emerald-300" />
+                    <span>과거 데이터 + 표준 기준 AI 추천받기</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectStandardType(currentStandard)}
+                className="px-3 py-2.5 rounded-xl border border-emerald-300 bg-white text-emerald-800 text-xs font-bold hover:bg-emerald-50 transition"
+                title="기본자료 표준 체크리스트로 초기화"
+              >
+                표준 기본값 불러오기
+              </button>
+            </div>
 
             {/* Recommended Tasks Checklist View */}
             {recommendedTasks.length > 0 && (

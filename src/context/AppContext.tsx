@@ -11,7 +11,8 @@ import {
   ActiveTab,
   DeviceSkin,
   EventResult,
-  UserRole
+  UserRole,
+  EmergencySupportCenter
 } from '../types';
 import {
   INITIAL_USERS,
@@ -21,7 +22,8 @@ import {
   INITIAL_ACTIVITIES,
   INITIAL_COMMENTS,
   INITIAL_TEMPLATES,
-  INITIAL_NOTIFICATIONS
+  INITIAL_NOTIFICATIONS,
+  INITIAL_EMERGENCY_CENTER
 } from '../data/initialData';
 
 interface AppContextType {
@@ -61,6 +63,7 @@ interface AppContextType {
   toggleTaskCompletion: (taskId: string, memberId?: string) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   createTask: (taskData: Omit<Task, 'id' | 'createdAt'>) => void;
+  createTasksBatch: (tasksData: Omit<Task, 'id' | 'createdAt'>[]) => void;
   deleteTask: (taskId: string) => void;
   quickCompleteTaskWithEvidence: (
     taskId: string,
@@ -87,6 +90,8 @@ interface AppContextType {
   markAllNotificationsAsRead: () => void;
   unreadNotificationCount: number;
   resetToSampleData: () => void;
+  emergencyCenter: EmergencySupportCenter;
+  updateEmergencyCenter: (data: Partial<EmergencySupportCenter>) => void;
 }
 
 const STORAGE_KEYS = {
@@ -101,6 +106,14 @@ const STORAGE_KEYS = {
   NOTIFICATIONS: 'eventcheck_notifications',
   DEVICE_SKIN: 'eventcheck_device_skin',
   IS_LOGGED_IN: 'eventcheck_is_logged_in',
+  EMERGENCY_CENTER: 'eventcheck_emergency_center',
+};
+
+// Counter to ensure unique IDs even if executed within the same millisecond
+let idSequence = 0;
+const generateUniqueId = (prefix: string) => {
+  idSequence = (idSequence + 1) % 100000;
+  return `${prefix}-${Date.now()}-${idSequence}-${Math.random().toString(36).substring(2, 7)}`;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -109,7 +122,20 @@ function getInitialStorage<T>(key: string, fallback: T): T {
   try {
     const saved = localStorage.getItem(key);
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Deduplicate arrays with 'id' property to heal corrupted localStorage from previous turns
+      if (Array.isArray(parsed)) {
+        const seen = new Set<string>();
+        const deduplicated = parsed.filter((item) => {
+          if (item && typeof item === 'object' && 'id' in item) {
+            if (seen.has(item.id)) return false;
+            seen.add(item.id);
+          }
+          return true;
+        });
+        return deduplicated as unknown as T;
+      }
+      return parsed;
     }
   } catch (e) {
     console.warn(`Failed to read ${key} from localStorage:`, e);
@@ -162,10 +188,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     getInitialStorage(STORAGE_KEYS.DEVICE_SKIN, 'responsive')
   );
 
+  const [emergencyCenter, setEmergencyCenter] = useState<EmergencySupportCenter>(() =>
+    getInitialStorage(STORAGE_KEYS.EMERGENCY_CENTER, INITIAL_EMERGENCY_CENTER)
+  );
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const templates = INITIAL_TEMPLATES;
 
   // Persist states
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.EMERGENCY_CENTER, JSON.stringify(emergencyCenter));
+  }, [emergencyCenter]);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
   }, [users]);
@@ -291,7 +325,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const isNowDone = targetTask.status !== 'done';
     if (isNowDone) {
       const newActivity: Activity = {
-        id: `act-${Date.now()}`,
+        id: generateUniqueId('act'),
         eventId: targetTask.eventId,
         userId: currentUser.id,
         userName: currentUser.name,
@@ -304,7 +338,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       // Push notification
       const newNotif: AppNotification = {
-        id: `notif-${Date.now()}`,
+        id: generateUniqueId('notif'),
         title: '팀원 업무 완료',
         body: `✓ ${currentUser.name}님이 [${targetTask.title}]을(를) 완료했습니다.`,
         type: 'task_completed',
@@ -350,9 +384,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // 2) Attachments
     const newAttachmentsList: Attachment[] = [];
-    newImages.forEach((img, idx) => {
+    newImages.forEach((img) => {
       newAttachmentsList.push({
-        id: `att-${Date.now()}-img-${idx}`,
+        id: generateUniqueId('att-img'),
         eventId: targetTask.eventId,
         taskId: targetTask.id,
         taskTitle: targetTask.title,
@@ -367,9 +401,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
     });
 
-    newDocs.forEach((doc, idx) => {
+    newDocs.forEach((doc) => {
       newAttachmentsList.push({
-        id: `att-${Date.now()}-doc-${idx}`,
+        id: generateUniqueId('att-doc'),
         eventId: targetTask.eventId,
         taskId: targetTask.id,
         taskTitle: targetTask.title,
@@ -391,7 +425,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // 3) Audit Activity
     const actList: Activity[] = [
       {
-        id: `act-${Date.now()}-comp`,
+        id: generateUniqueId('act-comp'),
         eventId: targetTask.eventId,
         userId: currentUser.id,
         userName: currentUser.name,
@@ -404,7 +438,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (newImages.length > 0) {
       actList.push({
-        id: `act-${Date.now()}-photo`,
+        id: generateUniqueId('act-photo'),
         eventId: targetTask.eventId,
         userId: currentUser.id,
         userName: currentUser.name,
@@ -416,7 +450,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (newDocs.length > 0) {
       actList.push({
-        id: `act-${Date.now()}-doc`,
+        id: generateUniqueId('act-doc'),
         eventId: targetTask.eventId,
         userId: currentUser.id,
         userName: currentUser.name,
@@ -430,7 +464,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // 4) Push notification
     const newNotif: AppNotification = {
-      id: `notif-${Date.now()}`,
+      id: generateUniqueId('notif'),
       title: '현장 업무 완료 및 사진 등록',
       body: `✓ ${currentUser.name}님이 [${targetTask.title}]을 완료하고 증빙 자료를 등록했습니다.`,
       type: 'task_completed',
@@ -451,19 +485,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const createTask = (taskData: Omit<Task, 'id' | 'createdAt'>) => {
     const newTask: Task = {
       ...taskData,
-      id: `t-${Date.now()}`,
+      id: generateUniqueId('t'),
       createdAt: new Date().toISOString().split('T')[0],
     };
     setTasks((prev) => [newTask, ...prev]);
 
     // Activity
     const act: Activity = {
-      id: `act-${Date.now()}`,
+      id: generateUniqueId('act'),
       eventId: newTask.eventId,
       userId: currentUser.id,
       userName: currentUser.name,
       actionType: 'create_task',
       message: `📋 새 업무 [${newTask.title}] 생성`,
+      timestamp: `${timeOnly()} ${currentUser.name}`,
+    };
+    setActivities((prev) => [act, ...prev]);
+  };
+
+  // Batch create tasks to safely add multiple recommended tasks without key collision
+  const createTasksBatch = (tasksData: Omit<Task, 'id' | 'createdAt'>[]) => {
+    if (!tasksData.length) return;
+    const nowStr = new Date().toISOString().split('T')[0];
+    const newTasks: Task[] = tasksData.map((t) => ({
+      ...t,
+      id: generateUniqueId('t'),
+      createdAt: nowStr,
+    }));
+    setTasks((prev) => [...newTasks, ...prev]);
+
+    const act: Activity = {
+      id: generateUniqueId('act'),
+      eventId: newTasks[0].eventId,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      actionType: 'create_task',
+      message: `📋 맞춤 추천 업무 ${newTasks.length}건 일괄 등록`,
       timestamp: `${timeOnly()} ${currentUser.name}`,
     };
     setActivities((prev) => [act, ...prev]);
@@ -480,14 +537,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   ) => {
     const newAtt: Attachment = {
       ...attachment,
-      id: `att-${Date.now()}`,
+      id: generateUniqueId('att'),
       uploadedAt: nowFormatted(),
       uploadedBy: currentUser.name,
     };
     setAttachments((prev) => [newAtt, ...prev]);
 
     const act: Activity = {
-      id: `act-${Date.now()}`,
+      id: generateUniqueId('act'),
       eventId: attachment.eventId,
       userId: currentUser.id,
       userName: currentUser.name,
@@ -508,7 +565,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const addComment = (taskId: string, text: string) => {
     const targetTask = tasks.find((t) => t.id === taskId);
     const newComment: Comment = {
-      id: `c-${Date.now()}`,
+      id: generateUniqueId('c'),
       taskId,
       userId: currentUser.id,
       userName: currentUser.name,
@@ -521,7 +578,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (targetTask) {
       const act: Activity = {
-        id: `act-${Date.now()}`,
+        id: generateUniqueId('act'),
         eventId: targetTask.eventId,
         userId: currentUser.id,
         userName: currentUser.name,
@@ -538,7 +595,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     eventData: Omit<EventItem, 'id' | 'createdBy' | 'inviteCode'>,
     templateId?: string
   ): string => {
-    const newId = `evt-${Date.now()}`;
+    const newId = generateUniqueId('evt');
     const inviteCode = `EVT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
     const newEvent: EventItem = {
@@ -555,8 +612,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (templateId) {
       const tmpl = templates.find((t) => t.id === templateId);
       if (tmpl) {
-        const createdTasks: Task[] = tmpl.tasks.map((t, idx) => ({
-          id: `t-${Date.now()}-${idx}`,
+        const createdTasks: Task[] = tmpl.tasks.map((t) => ({
+          id: generateUniqueId('t'),
           eventId: newId,
           category: t.category,
           title: t.title,
@@ -566,7 +623,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           priority: 'medium',
           assignees: [
             {
-              id: `tm-${Date.now()}-${idx}`,
+              id: generateUniqueId('tm'),
               userId: currentUser.id,
               userName: currentUser.name,
               isCompleted: false,
@@ -591,7 +648,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const source = events.find((e) => e.id === sourceEventId);
     if (!source) return '';
 
-    const newId = `evt-${Date.now()}`;
+    const newId = generateUniqueId('evt');
     const inviteCode = `EVT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
     const clonedEvent: EventItem = {
@@ -608,18 +665,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Clone tasks resetting completion status
     const sourceTasks = tasks.filter((t) => t.eventId === sourceEventId);
-    const clonedTasks: Task[] = sourceTasks.map((t, idx) => ({
+    const clonedTasks: Task[] = sourceTasks.map((t) => ({
       ...t,
-      id: `t-${Date.now()}-${idx}`,
+      id: generateUniqueId('t'),
       eventId: newId,
       dueDate: newDate.replace(/\./g, '-'),
       status: 'todo',
       completedAt: undefined,
       completedBy: undefined,
       workLog: undefined,
-      assignees: t.assignees.map((a, aidx) => ({
+      assignees: t.assignees.map((a) => ({
         ...a,
-        id: `tm-${Date.now()}-${idx}-${aidx}`,
+        id: generateUniqueId('tm'),
         isCompleted: false,
         completedAt: undefined,
       })),
@@ -631,7 +688,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCurrentEventId(newId);
 
     const act: Activity = {
-      id: `act-${Date.now()}`,
+      id: generateUniqueId('act'),
       eventId: newId,
       userId: currentUser.id,
       userName: currentUser.name,
@@ -663,7 +720,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     );
 
     const act: Activity = {
-      id: `act-${Date.now()}`,
+      id: generateUniqueId('act'),
       eventId,
       userId: currentUser.id,
       userName: currentUser.name,
@@ -822,6 +879,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   };
 
+  const updateEmergencyCenter = (data: Partial<EmergencySupportCenter>) => {
+    const now = new Date();
+    const formattedTime = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const updated: EmergencySupportCenter = {
+      ...emergencyCenter,
+      ...data,
+      updatedAt: formattedTime,
+      updatedBy: currentUser.name || '총괄관리자',
+    };
+    setEmergencyCenter(updated);
+
+    const activityId = generateUniqueId('act');
+    const newAct: Activity = {
+      id: activityId,
+      eventId: currentEventId,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      actionType: 'update_task',
+      message: `🚨 총괄관리자가 현장 긴급지원센터 연락망·운영 정보를 업데이트했습니다.`,
+      timestamp: '방금 전',
+      detail: `전화: ${updated.phone} | 상황실: ${updated.location}`,
+    };
+    setActivities((prev) => [newAct, ...prev]);
+
+    const notifId = generateUniqueId('notif');
+    const newNotif: AppNotification = {
+      id: notifId,
+      title: '현장 긴급지원센터 정보 업데이트',
+      body: `🚨 [${currentUser.name} 총괄관리자] 현장 긴급지원센터 연락망(☎ ${updated.phone}) 및 상황실 위치(${updated.location})가 등록되었습니다.`,
+      type: 'system',
+      timestamp: '방금 전',
+      read: false,
+      eventId: currentEventId,
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+  };
+
   const resetToSampleData = () => {
     setUsers(INITIAL_USERS);
     setCurrentUserId('u-1');
@@ -833,6 +928,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setActivities(INITIAL_ACTIVITIES);
     setComments(INITIAL_COMMENTS);
     setNotifications(INITIAL_NOTIFICATIONS);
+    setEmergencyCenter(INITIAL_EMERGENCY_CENTER);
     localStorage.clear();
   };
 
@@ -867,6 +963,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toggleTaskCompletion,
         updateTask,
         createTask,
+        createTasksBatch,
         deleteTask,
         quickCompleteTaskWithEvidence,
         addAttachment,
@@ -880,6 +977,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         markAllNotificationsAsRead,
         unreadNotificationCount,
         resetToSampleData,
+        emergencyCenter,
+        updateEmergencyCenter,
       }}
     >
       {children}

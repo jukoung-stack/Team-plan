@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CheckCircle2,
   Clock,
@@ -12,10 +12,15 @@ import {
   Image as ImageIcon,
   Check,
   Zap,
-  Award
+  Award,
+  Headphones,
+  Phone,
+  MapPin,
+  Edit3
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Task } from '../../types';
+import { EmergencyCenterModal } from '../common/EmergencyCenterModal';
 
 interface HomeViewProps {
   onSelectTask: (task: Task) => void;
@@ -43,7 +48,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
     attachments,
     eventActivities,
     toggleTaskCompletion,
+    emergencyCenter,
   } = useApp();
+
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
+  const [emergencyModalEditMode, setEmergencyModalEditMode] = useState(false);
+  const isAdmin = currentUser.role === 'admin';
 
   // Calculate statistics
   const totalTasks = eventTasks.length;
@@ -157,6 +167,68 @@ export const HomeView: React.FC<HomeViewProps> = ({
               className="rounded-xl bg-emerald-700 px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-600 transition shadow-xs"
             >
               보고서 생성
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 현장 긴급 지원센터 실시간 공유 바 (총괄관리자 별도 입력 & 팀원 실시간 열람) */}
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-3 sm:p-3.5 text-white shadow-md flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 overflow-hidden">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <Headphones className="h-4 w-4" />
+          </div>
+          <div className="overflow-hidden">
+            <div className="flex items-center gap-1.5">
+              <span className="font-black text-white text-xs">{emergencyCenter.centerName}</span>
+              {isAdmin ? (
+                <span className="rounded bg-amber-400/20 text-amber-300 border border-amber-400/30 px-1.5 py-0.2 text-[9px] font-bold">
+                  총괄관리자 입력
+                </span>
+              ) : (
+                <span className="rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 text-[9px] font-bold">
+                  팀원 열람
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-slate-300 mt-0.5 truncate">
+              <span className="font-mono font-bold text-emerald-300">☎ {emergencyCenter.phone}</span>
+              <span className="text-slate-500">|</span>
+              <span className="truncate text-slate-400">📍 {emergencyCenter.location}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <a
+            href={`tel:${emergencyCenter.phone}`}
+            className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 text-[11px] transition shadow-xs active:scale-95"
+          >
+            <Phone className="h-3 w-3 fill-current" />
+            <span>연결</span>
+          </a>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEmergencyModalEditMode(true);
+                setIsEmergencyModalOpen(true);
+              }}
+              className="flex items-center gap-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/40 font-bold px-2.5 py-1.5 text-[11px] transition active:scale-95"
+            >
+              <Edit3 className="h-3 w-3" />
+              <span>수정</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setEmergencyModalEditMode(false);
+                setIsEmergencyModalOpen(true);
+              }}
+              className="flex items-center gap-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-2.5 py-1.5 text-[11px] transition border border-slate-700"
+            >
+              <span>안내</span>
             </button>
           )}
         </div>
@@ -382,6 +454,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Emergency Center Modal */}
+      <EmergencyCenterModal
+        isOpen={isEmergencyModalOpen}
+        onClose={() => setIsEmergencyModalOpen(false)}
+        initialEditMode={emergencyModalEditMode}
+      />
     </div>
   );
 };

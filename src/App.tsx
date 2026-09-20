@@ -118,7 +118,12 @@ const MainApp: React.FC = () => {
           />
         );
       case 'my_tasks':
-        return <MyTasksView onSelectTask={handleOpenTask} />;
+        return (
+          <MyTasksView
+            onSelectTask={handleOpenTask}
+            onGoHome={() => setActiveTab('home')}
+          />
+        );
       case 'more':
         return (
           <MoreView

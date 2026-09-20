@@ -11,7 +11,8 @@ import {
   UserCheck,
   Plus,
   LogIn,
-  LogOut
+  LogOut,
+  Home
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DeviceSkin, User } from '../../types';
@@ -38,6 +39,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent, onOpenLogi
     markAllNotificationsAsRead,
     deviceSkin,
     setDeviceSkin,
+    setActiveTab,
   } = useApp();
 
   const [isEventMenuOpen, setIsEventMenuOpen] = useState(false);
@@ -262,16 +264,30 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent, onOpenLogi
                   className="fixed inset-0 z-40"
                   onClick={() => setIsUserMenuOpen(false)}
                 />
-                <div className="absolute right-0 top-12 z-50 w-60 rounded-2xl bg-white p-2.5 shadow-xl border border-slate-200">
-                  <div className="px-2 py-1.5 mb-1 border-b border-slate-100">
-                    <span className="text-[11px] font-bold text-slate-400 block">
-                      팀원 계정 전환 (현장 동시 체크)
-                    </span>
-                    <span className="text-xs font-semibold text-slate-800">
-                      {isLoggedIn
-                        ? `현재 접속: ${currentUser.name} (${currentUser.department})`
-                        : '현재 상태: 미로그인 (게스트)'}
-                    </span>
+                <div className="absolute right-0 top-12 z-50 w-64 rounded-2xl bg-white p-2.5 shadow-xl border border-slate-200">
+                  <div className="px-2 py-1.5 mb-1 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 block">
+                        팀원 계정 전환 (현장 동시 체크)
+                      </span>
+                      <span className="text-xs font-semibold text-slate-800">
+                        {isLoggedIn
+                          ? `접속: ${currentUser.name}`
+                          : '미로그인 (게스트)'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('home');
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-800 hover:bg-emerald-100 transition"
+                      title="처음(홈)으로 이동"
+                    >
+                      <Home className="h-3 w-3" />
+                      <span>홈으로</span>
+                    </button>
                   </div>
                   <div className="space-y-1">
                     {users.map((u) => (
