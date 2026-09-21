@@ -47,7 +47,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent, onOpenLogi
   const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+    <header className="sticky top-0 z-30 w-full border-b border-slate-200/80 bg-white/95 backdrop-blur-md relative">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-3 sm:px-4">
         {/* Left: Event Switcher Dropdown */}
         <div className="relative flex items-center gap-2">
@@ -159,68 +159,19 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent, onOpenLogi
           </div>
 
           {/* Notification Bell */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
-              title="알림 센터"
-            >
-              <Bell className="h-4 w-4" />
-              {unreadNotificationCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
-                  {unreadNotificationCount}
-                </span>
-              )}
-            </button>
-
-            {/* Notification Drawer Popover */}
-            {isNotifOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsNotifOpen(false)}
-                />
-                <div className="absolute right-0 top-12 z-50 w-72 sm:w-80 rounded-2xl bg-white p-3 shadow-2xl border border-slate-200">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
-                    <span className="text-xs font-bold text-slate-900">푸시 알림</span>
-                    {unreadNotificationCount > 0 && (
-                      <button
-                        type="button"
-                        onClick={markAllNotificationsAsRead}
-                        className="text-[11px] font-semibold text-emerald-700 hover:underline"
-                      >
-                        모두 읽음
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                    {notifications.length === 0 ? (
-                      <p className="text-center text-xs text-slate-400 py-4">알림이 없습니다.</p>
-                    ) : (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => markNotificationAsRead(n.id)}
-                          className={`cursor-pointer rounded-xl p-2.5 text-xs transition border ${
-                            n.read
-                              ? 'bg-slate-50/70 border-slate-100 text-slate-600'
-                              : 'bg-emerald-50/70 border-emerald-200 text-slate-900 font-medium'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-xs">{n.title}</span>
-                            <span className="text-[10px] text-slate-400">{n.timestamp}</span>
-                          </div>
-                          <p className="text-[11px] leading-relaxed text-slate-600">{n.body}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </>
+          <button
+            type="button"
+            onClick={() => setIsNotifOpen(!isNotifOpen)}
+            className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition"
+            title="알림 센터"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadNotificationCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-white">
+                {unreadNotificationCount}
+              </span>
             )}
-          </div>
+          </button>
 
           {/* Login Button */}
           <button
@@ -354,6 +305,73 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onOpenNewEvent, onOpenLogi
           </div>
         </div>
       </div>
+
+      {/* Notification Center Popover (화면 중앙 정렬: 안드로이드 및 모바일 화면 잘림 방지) */}
+      {isNotifOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-xs"
+            onClick={() => setIsNotifOpen(false)}
+          />
+          <div
+            id="notification-center-popup"
+            className="absolute left-1/2 -translate-x-1/2 top-14 z-50 w-[calc(100%-24px)] max-w-sm rounded-2xl bg-white p-3.5 shadow-2xl border border-slate-200"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-slate-900">현장 알림 센터</span>
+                {unreadNotificationCount > 0 && (
+                  <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-600">
+                    미열람 {unreadNotificationCount}건
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {unreadNotificationCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={markAllNotificationsAsRead}
+                    className="text-[11px] font-semibold text-emerald-700 hover:underline"
+                  >
+                    모두 읽음
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsNotifOpen(false)}
+                  className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+                  title="닫기"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {notifications.length === 0 ? (
+                <p className="text-center text-xs text-slate-400 py-6">수신된 알림이 없습니다.</p>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    onClick={() => markNotificationAsRead(n.id)}
+                    className={`cursor-pointer rounded-xl p-2.5 text-xs transition border ${
+                      n.read
+                        ? 'bg-slate-50/70 border-slate-100 text-slate-600'
+                        : 'bg-emerald-50/70 border-emerald-200 text-slate-900 font-medium'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs">{n.title}</span>
+                      <span className="text-[10px] text-slate-400">{n.timestamp}</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-slate-600">{n.body}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </header>
   );
 };

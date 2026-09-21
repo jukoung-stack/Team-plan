@@ -13,11 +13,9 @@ import {
   Check,
   CheckCircle2,
   LogIn,
-  Home,
-  Headphones
+  Home
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { EmergencyCenterModal } from '../common/EmergencyCenterModal';
 
 interface MoreViewProps {
   onOpenTeamInvite: () => void;
@@ -41,10 +39,8 @@ export const MoreView: React.FC<MoreViewProps> = ({
     setDeviceSkin,
     resetToSampleData,
     setActiveTab,
-    emergencyCenter,
   } = useApp();
 
-  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<'menu' | 'permissions' | 'templates' | 'notifications'>('menu');
 
   // Push notification toggle states (PRD 18)
@@ -257,39 +253,7 @@ export const MoreView: React.FC<MoreViewProps> = ({
           <ChevronRight className={`h-4 w-4 text-slate-400 transition ${activeSection === 'notifications' ? 'rotate-90' : ''}`} />
         </div>
 
-        {/* 6. 현장 긴급 지원센터 (총괄관리자 별도 입력 & 팀원 실시간 공유) */}
-        <div
-          onClick={() => setIsEmergencyModalOpen(true)}
-          className="flex cursor-pointer items-center justify-between p-4 hover:bg-slate-50 transition border-t border-slate-100"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
-              <Headphones className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-slate-900 block">
-                  현장 긴급 지원센터
-                </span>
-                {currentUser.role === 'admin' ? (
-                  <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                    총괄관리자 입력/수정
-                  </span>
-                ) : (
-                  <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800">
-                    팀원 실시간 공유
-                  </span>
-                )}
-              </div>
-              <span className="text-xs text-slate-400">
-                {emergencyCenter.centerName} · ☎ {emergencyCenter.phone} · 📍 {emergencyCenter.location}
-              </span>
-            </div>
-          </div>
-          <ChevronRight className="h-4 w-4 text-slate-400" />
-        </div>
-
-        {/* 7. Device Theme Frame Preset */}
+        {/* 6. Device Theme Frame Preset */}
         <div className="p-4">
           <div className="flex items-center gap-3 mb-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
@@ -499,12 +463,6 @@ export const MoreView: React.FC<MoreViewProps> = ({
           <span>기본 PRD 샘플 데이터로 복원</span>
         </button>
       </div>
-
-      {/* Emergency Center Modal */}
-      <EmergencyCenterModal
-        isOpen={isEmergencyModalOpen}
-        onClose={() => setIsEmergencyModalOpen(false)}
-      />
     </div>
   );
 };
