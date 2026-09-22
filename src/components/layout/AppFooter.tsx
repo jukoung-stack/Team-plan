@@ -3,6 +3,7 @@ import {
   Shield,
   Phone,
   Users,
+  UserCheck,
   Sparkles,
   Headphones,
   Edit3,
@@ -22,7 +23,7 @@ export const AppFooter: React.FC<AppFooterProps> = ({
   onOpenLogin,
   onOpenNewEvent,
 }) => {
-  const { emergencyCenter, currentUser } = useApp();
+  const { emergencyCenter, currentUser, isLoggedIn } = useApp();
   const isAdmin = currentUser.role === 'admin';
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
   const [emergencyModalEditMode, setEmergencyModalEditMode] = useState(false);
@@ -70,9 +71,14 @@ export const AppFooter: React.FC<AppFooterProps> = ({
                 type="button"
                 onClick={onOpenLogin}
                 className="rounded-xl bg-emerald-700/80 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 transition text-[11px] flex items-center gap-1.5 border border-emerald-600/50 shadow-xs active:scale-95"
+                title={isLoggedIn ? `현장 업무 로그인: ${currentUser.name}` : '현장 업무 로그인'}
               >
-                <Users className="h-3.5 w-3.5" />
-                <span>로그인</span>
+                {isLoggedIn ? (
+                  <UserCheck className="h-3.5 w-3.5 text-emerald-300" />
+                ) : (
+                  <Users className="h-3.5 w-3.5" />
+                )}
+                <span>{isLoggedIn ? currentUser.name : '로그인'}</span>
               </button>
             )}
             {onOpenInvite && (
@@ -187,15 +193,9 @@ export const AppFooter: React.FC<AppFooterProps> = ({
           </div>
         </div>
 
-        {/* Business Entity Info & Copyright */}
+        {/* Security Notice & Copyright */}
         <div className="border-t border-slate-800 pt-4 text-[10px] text-slate-500 space-y-1.5 leading-normal">
-          <p>
-            (주)행사체크 시스템즈 | 대표이사: 김철수 | 사업자등록번호: 312-85-12345 | 통신판매업신고: 제2026-충남아산-0412호
-          </p>
-          <p>
-            본사 주소: 충청남도 아산시 온양온천로 100 아산스마트행사지원센터 302호 | 문의: 041-537-3748
-          </p>
-          <p className="text-slate-600">
+          <p className="text-slate-500">
             ※ 본 어플리케이션 내 등록된 모든 행사 현장 사진, 첨부 계획서, 정산 증빙 자료는 암호화되어 보관되며 행사 주최 측의 승인 없이 외부로 반출되지 않습니다.
           </p>
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-slate-500">

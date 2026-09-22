@@ -13,9 +13,12 @@ import {
   Check,
   CheckCircle2,
   LogIn,
-  Home
+  UserCheck,
+  Home,
+  Crown
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { ConnectedUsersModal } from '../common/ConnectedUsersModal';
 
 interface MoreViewProps {
   onOpenTeamInvite: () => void;
@@ -39,9 +42,11 @@ export const MoreView: React.FC<MoreViewProps> = ({
     setDeviceSkin,
     resetToSampleData,
     setActiveTab,
+    eventActivities,
   } = useApp();
 
   const [activeSection, setActiveSection] = useState<'menu' | 'permissions' | 'templates' | 'notifications'>('menu');
+  const [isConnectedUsersModalOpen, setIsConnectedUsersModalOpen] = useState(false);
 
   // Push notification toggle states (PRD 18)
   const [notifSettings, setNotifSettings] = useState({
@@ -92,63 +97,108 @@ export const MoreView: React.FC<MoreViewProps> = ({
               type="button"
               onClick={onOpenLogin}
               className="flex items-center gap-1.5 rounded-xl bg-emerald-800 text-white hover:bg-emerald-700 px-3 py-1.5 text-xs font-bold transition shadow-xs active:scale-95"
+              title={isLoggedIn ? `현장 업무 로그인: ${currentUser.name}` : '현장 업무 로그인'}
             >
-              <LogIn className="h-3.5 w-3.5" />
-              <span>로그인</span>
+              {isLoggedIn ? (
+                <UserCheck className="h-3.5 w-3.5 text-emerald-200" />
+              ) : (
+                <LogIn className="h-3.5 w-3.5" />
+              )}
+              <span>{isLoggedIn ? currentUser.name : '로그인'}</span>
             </button>
           )}
         </div>
 
-        {/* Team Account Quick Switch */}
+        {/* 현장 동시 접속 팀원 현황 */}
         <div className="mt-4 border-t border-slate-100 pt-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-slate-400 block">
-              등록 팀원 목록 (총괄관리자 및 현장팀원)
+              현장 동시 접속 팀원 ({users.length}명)
             </span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => setIsConnectedUsersModalOpen(true)}
+                className="text-[11px] font-bold text-emerald-800 hover:underline flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-md"
+              >
+                <Users className="h-3 w-3 text-emerald-700" />
+                <span>접속 현황 팝업</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab('home')}
-                className="text-[11px] font-bold text-emerald-800 hover:underline flex items-center gap-0.5"
+                className="text-[11px] font-bold text-slate-600 hover:underline flex items-center gap-0.5"
               >
                 <Home className="h-3 w-3" />
                 <span>홈으로</span>
               </button>
-              {onOpenLogin && (
-                <button
-                  type="button"
-                  onClick={onOpenLogin}
-                  className="text-[11px] font-bold text-slate-600 hover:underline flex items-center gap-0.5"
-                >
-                  <span>로그인</span>
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              )}
             </div>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            {users.map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => setCurrentUser(u)}
-                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold shrink-0 transition ${
-                  u.id === currentUser.id
-                    ? 'border-emerald-600 bg-emerald-50 text-emerald-800 font-bold'
-                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <span className={`h-2 w-2 rounded-full ${u.avatarColor}`} />
-                <span>{u.name}</span>
-                <span className="text-[10px] text-slate-400">({u.role === 'admin' ? '총괄' : u.role === 'leader' ? '팀장' : '팀원'})</span>
-              </button>
-            ))}
+            {users.map((u) => {
+              const isMe = u.id === currentUser.id;
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => setIsConnectedUsersModalOpen(true)}
+                  className={`cursor-pointer flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold shrink-0 transition ${
+                    isMe
+                      ? 'border-emerald-600 bg-emerald-50 text-emerald-800 font-bold'
+                      : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                  }`}
+                  title="클릭하여 동시 접속 상세 현황 보기"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  </span>
+                  <span>{u.name}</span>
+                  {isMe ? (
+                    <span className="text-[10px] text-emerald-700 font-black">(나)</span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">
+                      ({u.role === 'admin' ? '총괄' : u.role === 'leader' ? '팀장' : '팀원'})
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
+          <p className="text-[10px] text-slate-400 mt-1.5">
+            ※ 상단 및 설정에서는 로그인된 본인 계정만 표기되며, 팀원 명단을 클릭하면 실시간 동시 접속 상세 현황 팝업이 열립니다.
+          </p>
         </div>
       </div>
 
       {/* Main Settings Menu */}
       <div className="rounded-2xl bg-white shadow-xs border border-emerald-900/10 overflow-hidden divide-y divide-slate-100">
+        {/* 0. General Manager (Single Admin) & Team Direct Assignment */}
+        {onOpenLogin && (
+          <div
+            onClick={onOpenLogin}
+            className="flex cursor-pointer items-center justify-between p-4 hover:bg-amber-50/50 transition bg-amber-50/20"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+                <Crown className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-sm text-slate-900 block">
+                    총괄관리자(1인) 지정 및 팀원 입력
+                  </span>
+                  <span className="rounded bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2">
+                    단독 1인
+                  </span>
+                </div>
+                <span className="text-xs text-slate-400">
+                  총괄관리자 1명 지정 후, 승인된 현장 팀원 입력 및 관리
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-400" />
+          </div>
+        )}
+
         {/* 1. Team Management & Invite (PRD 15) */}
         <div
           onClick={onOpenTeamInvite}
@@ -463,6 +513,15 @@ export const MoreView: React.FC<MoreViewProps> = ({
           <span>기본 PRD 샘플 데이터로 복원</span>
         </button>
       </div>
+
+      {/* Connected Users Modal */}
+      <ConnectedUsersModal
+        isOpen={isConnectedUsersModalOpen}
+        onClose={() => setIsConnectedUsersModalOpen(false)}
+        currentUser={currentUser}
+        users={users}
+        eventActivities={eventActivities}
+      />
     </div>
   );
 };

@@ -156,3 +156,41 @@ export interface AppNotification {
 
 export type ActiveTab = 'home' | 'events' | 'photos' | 'schedule' | 'my_tasks' | 'more';
 export type DeviceSkin = 'ios' | 'android' | 'responsive';
+
+// Local-first IndexedDB Sync Types for Field Tasks
+export type SyncActionType =
+  | 'quick_field_action'
+  | 'toggle_completion'
+  | 'update_task'
+  | 'create_task'
+  | 'delete_task'
+  | 'add_comment'
+  | 'add_attachment';
+
+export type SyncStatus = 'pending' | 'syncing' | 'synced' | 'failed';
+
+export interface SyncQueueItem {
+  id: string;
+  type: SyncActionType;
+  taskId: string;
+  taskTitle: string;
+  eventId: string;
+  summary: string;
+  payload: any;
+  timestamp: number;
+  formattedTime: string;
+  status: SyncStatus;
+  retryCount: number;
+  error?: string;
+  appliedLocallyAt: string;
+}
+
+export interface NetworkSyncState {
+  isOnline: boolean;
+  isSimulatedOffline: boolean;
+  isSyncing: boolean;
+  pendingCount: number;
+  lastSyncedAt: string | null;
+  totalCachedTasks: number;
+  lastOfflineActionAt: string | null;
+}

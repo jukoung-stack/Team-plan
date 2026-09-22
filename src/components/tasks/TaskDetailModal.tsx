@@ -17,7 +17,11 @@ import {
   ExternalLink,
   Users,
   Check,
-  Award
+  Award,
+  Wifi,
+  WifiOff,
+  Database,
+  Zap,
 } from 'lucide-react';
 import { Task, TaskMember } from '../../types';
 import { useApp } from '../../context/AppContext';
@@ -46,6 +50,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
     deleteTask,
     addComment,
     removeAttachment,
+    syncState,
   } = useApp();
 
   const [workLogInput, setWorkLogInput] = useState<string>(task?.workLog || '');
@@ -69,6 +74,18 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
       setCommentText('');
     }
   }, [task]);
+
+  // Keyboard navigation: Escape key closes modal
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !task) return null;
 
@@ -185,15 +202,35 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto">
-        <div className="relative my-auto w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-emerald-900/20 overflow-hidden flex flex-col max-h-[92vh]">
+      <div
+        className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/70 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto cursor-pointer"
+        onClick={onClose}
+      >
+        <div
+          className="relative my-auto w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-emerald-900/20 overflow-hidden flex flex-col max-h-[92vh] cursor-default"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 bg-emerald-50/50 px-4 py-3 sm:px-5">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
                 {task.category}
               </span>
               {getStatusBadge(task.status)}
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  syncState.isOnline
+                    ? 'bg-emerald-100/80 text-emerald-800'
+                    : 'bg-amber-100 text-amber-900 animate-pulse'
+                }`}
+              >
+                {syncState.isOnline ? (
+                  <Wifi className="h-3 w-3" />
+                ) : (
+                  <WifiOff className="h-3 w-3" />
+                )}
+                <span>{syncState.isOnline ? '온라인 동기화' : 'IndexedDB 로컬 모드'}</span>
+              </span>
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -211,8 +248,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={onClose}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition"
+                id="btn-close-task-detail-x"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition cursor-pointer"
+                aria-label="팝업창 닫기"
+                title="닫기 (Esc)"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -594,13 +638,27 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           <div className="border-t border-slate-200 bg-slate-50 p-3 sm:p-4 flex items-center justify-between gap-2">
             <button
               type="button"
+              id="btn-close-task-detail-cancel"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+              className="rounded-xl border border-slate-300 bg-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition active:scale-95 shadow-2xs cursor-pointer"
+              title="작업 취소 및 팝업창 닫기"
+            >
+              취소
+            </button>
+
+            <button
+              type="button"
               onClick={() => {
                 updateTask(task.id, {
                   workLog: workLogInput,
                 });
                 onClose();
               }}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-100 transition"
+              className="rounded-xl border border-slate-300 bg-white px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-100 transition"
             >
               내용만 임시저장
             </button>
@@ -608,10 +666,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             <button
               type="button"
               onClick={handleSaveAndComplete}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-emerald-600 active:scale-[0.99] transition"
+              className="flex-1 flex flex-col items-center justify-center rounded-xl bg-linear-to-r from-emerald-800 to-teal-800 py-2 sm:py-2.5 px-3 text-white shadow-md hover:from-emerald-700 hover:to-teal-700 active:scale-[0.99] transition"
             >
-              <CheckCircle2 className="h-4 w-4" />
-              <span>⚡ 1분 현장 완료 체크 & 저장</span>
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold">
+                <Zap className="h-4 w-4 fill-amber-300 text-amber-300" />
+                <span>⚡ 1분 현장 완료 체크 & 저장</span>
+              </div>
+              <span className="text-[10px] text-emerald-200/90 font-medium">
+                {syncState.isOnline ? '로컬 IndexedDB 즉시 기록 후 클라우드 동기화' : '오프라인 안심 저장 (복구 시 자동 업로드)'}
+              </span>
             </button>
           </div>
         </div>

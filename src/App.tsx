@@ -9,6 +9,7 @@ import { MyTasksView } from './components/views/MyTasksView';
 import { FieldPhotosView } from './components/views/FieldPhotosView';
 import { MoreView } from './components/views/MoreView';
 import { TaskDetailModal } from './components/tasks/TaskDetailModal';
+import { OneMinuteFieldActionModal } from './components/tasks/OneMinuteFieldActionModal';
 import {
   NewEventModal,
   CloneEventModal,
@@ -44,22 +45,18 @@ const MainApp: React.FC = () => {
   const [isAiReportOpen, setIsAiReportOpen] = useState(false);
   const [aiReportTargetEvent, setAiReportTargetEvent] = useState<EventItem | null>(null);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isOneMinuteFieldActionOpen, setIsOneMinuteFieldActionOpen] = useState(false);
+  const [oneMinuteTargetTaskId, setOneMinuteTargetTaskId] = useState<string | undefined>(undefined);
 
   const handleOpenTask = (task: Task) => {
     setSelectedTask(task);
     setIsTaskModalOpen(true);
   };
 
-  // PRD 27: 1-Minute Fast Field Action
-  const handleQuickFieldAction = () => {
-    const activeTask =
-      eventTasks.find((t) => t.dueDate === '2026-09-18' && t.status !== 'done') ||
-      eventTasks.find((t) => t.status !== 'done') ||
-      eventTasks[0];
-
-    if (activeTask) {
-      handleOpenTask(activeTask);
-    }
+  // PRD 27: 1-Minute Fast Field Action (IndexedDB Offline-First)
+  const handleQuickFieldAction = (taskId?: string) => {
+    setOneMinuteTargetTaskId(taskId);
+    setIsOneMinuteFieldActionOpen(true);
   };
 
   const handleOpenClone = (event: EventItem) => {
@@ -211,7 +208,7 @@ const MainApp: React.FC = () => {
         {activeTab === 'home' && (
           <button
             type="button"
-            onClick={handleQuickFieldAction}
+            onClick={() => handleQuickFieldAction()}
             className="fixed bottom-16 right-4 sm:right-auto sm:left-[calc(50%+130px)] z-20 flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white shadow-xl hover:bg-emerald-600 active:scale-95 transition"
             title="현장 1분 빠른 기록"
           >
@@ -239,6 +236,15 @@ const MainApp: React.FC = () => {
           setIsTaskModalOpen(false);
           setSelectedTask(null);
         }}
+      />
+
+      <OneMinuteFieldActionModal
+        isOpen={isOneMinuteFieldActionOpen}
+        onClose={() => {
+          setIsOneMinuteFieldActionOpen(false);
+          setOneMinuteTargetTaskId(undefined);
+        }}
+        initialTaskId={oneMinuteTargetTaskId}
       />
 
       <NewEventModal
